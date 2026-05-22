@@ -2,3 +2,6 @@ logging:
   level:
     root: info
     com.erp: debug
+
+flowable:
+  database-schema-update: true

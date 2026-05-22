@@ -4,9 +4,9 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:postgresql://localhost:5432/erp_dev
-    username: erp
-    password: erp_dev_123
+    url: jdbc:postgresql://localhost:5432/erp_db
+    username: erp_user
+    password: erp_password
     driver-class-name: org.postgresql.Driver
   data:
     redis:
@@ -47,6 +47,10 @@ management:
         include: health,info
 
 erp:
+  security:
+    jwt-secret: erp-dev-secret-key-please-change-123456
+    access-token-expire-seconds: 7200
+    refresh-token-expire-seconds: 604800
   storage:
     endpoint: http://localhost:9000
     access-key: admin
