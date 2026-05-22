@@ -1,0 +1,7 @@
+node_modules
+dist
+.expo
+.turbo
+coverage
+apps/desktop/src-tauri/target
+*target

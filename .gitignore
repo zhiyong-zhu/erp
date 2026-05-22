@@ -1,0 +1,47 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java / Maven
+**/target/
+**/.mvn/
+*.class
+
+# Node / pnpm
+**/node_modules/
+**/.pnpm-store/
+pnpm-lock.yaml
+
+# Frontend build
+**/dist/
+**/.expo/
+**/.expo-shared/
+**/.vite/
+coverage/
+
+# Tauri / Rust
+**/src-tauri/target/
+**/src-tauri/gen/
+Cargo.lock
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Runtime / local artifacts
+tmp/
+temp/
+*.tmp
+*.pid
+
+# Local repositories / caches
+erp-server/.m2repo/
+erp-server/.maven-home/

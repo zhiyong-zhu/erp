@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@erp/shared": ["packages/shared/src/index.ts"],
+      "@erp/shared/*": ["packages/shared/src/*"],
+      "@erp/ui-web": ["packages/ui-web/src/index.ts"],
+      "@erp/ui-mobile": ["packages/ui-mobile/src/index.ts"]
+    }
+  }
+}

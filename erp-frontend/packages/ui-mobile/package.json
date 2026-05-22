@@ -1,0 +1,11 @@
+{
+  "name": "@erp/ui-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "echo ui-mobile lint skipped"
+  }
+}

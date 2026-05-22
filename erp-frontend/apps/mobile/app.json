@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "ERP Mobile",
+    "slug": "erp-mobile",
+    "version": "1.0.0",
+    "experiments": {
+      "autolinkingModuleResolution": true
+    },
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["android", "ios"],
+    "android": {
+      "package": "com.erp.mobile"
+    },
+    "ios": {
+      "bundleIdentifier": "com.erp.mobile"
+    }
+  }
+}

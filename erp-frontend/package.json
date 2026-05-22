@@ -1,0 +1,14 @@
+{
+  "name": "erp-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.1.3",
+  "scripts": {
+    "dev:web": "pnpm --filter @erp/web dev",
+    "dev:desktop": "pnpm --filter @erp/desktop tauri:dev",
+    "dev:mobile": "pnpm --filter @erp/mobile start",
+    "build:web": "pnpm --filter @erp/web build",
+    "build:desktop": "pnpm --filter @erp/desktop tauri:build",
+    "lint": "pnpm -r lint"
+  }
+}
