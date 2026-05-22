@@ -8,6 +8,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,11 +31,14 @@ public class TokenService {
 
     public String createAccessToken(LoginUser loginUser) {
         Instant now = Instant.now();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", loginUser.getUserId());
+        if (loginUser.getRealName() != null) {
+            claims.put("realName", loginUser.getRealName());
+        }
         return Jwts.builder()
                 .subject(loginUser.getUsername())
-                .claims(Map.of(
-                        "userId", loginUser.getUserId(),
-                        "realName", loginUser.getRealName()))
+                .claims(claims)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessTokenExpireSeconds)))
                 .signWith(key)
@@ -43,9 +47,12 @@ public class TokenService {
 
     public String createRefreshToken(LoginUser loginUser) {
         Instant now = Instant.now();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", loginUser.getUserId());
+        claims.put("type", "refresh");
         return Jwts.builder()
                 .subject(loginUser.getUsername())
-                .claims(Map.of("userId", loginUser.getUserId(), "type", "refresh"))
+                .claims(claims)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(refreshTokenExpireSeconds)))
                 .signWith(key)

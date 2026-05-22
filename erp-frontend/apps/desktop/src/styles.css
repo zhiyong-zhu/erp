@@ -1,0 +1,156 @@
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", "PingFang SC", sans-serif;
+  color: #0f172a;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.desktop-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.2), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.18), transparent 30%),
+    linear-gradient(180deg, #f8fbfd 0%, #eef5f7 100%);
+}
+
+.desktop-card {
+  width: min(440px, 100%);
+  box-sizing: border-box;
+  padding: 32px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.desktop-login-card h1,
+.desktop-dashboard h1 {
+  margin: 18px 0 10px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.desktop-login-card p,
+.desktop-dashboard p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.desktop-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.desktop-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.desktop-form label {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.desktop-form input {
+  height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0 14px;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.desktop-form input:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+}
+
+.desktop-primary-button,
+.desktop-secondary-button {
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.desktop-primary-button {
+  background: #0f766e;
+  color: #fff;
+}
+
+.desktop-secondary-button {
+  width: 140px;
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.desktop-primary-button:disabled,
+.desktop-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.desktop-alert {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.desktop-dashboard {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 24px;
+}
+
+.desktop-user-panel {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.desktop-user-panel div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.desktop-user-panel strong {
+  color: #475569;
+}
+
+.desktop-user-panel span {
+  overflow-wrap: anywhere;
+}

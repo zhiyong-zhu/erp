@@ -7,9 +7,10 @@ import java.util.UUID;
 
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
     @Delete("DELETE FROM sys_user_role WHERE user_id = CAST(#{userId} AS uuid)")
-    int deleteByUserId(UUID userId);
+    int deleteByUserId(@Param("userId") UUID userId);
 }

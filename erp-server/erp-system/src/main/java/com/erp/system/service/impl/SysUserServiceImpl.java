@@ -79,6 +79,7 @@ public class SysUserServiceImpl implements SysUserService {
             throw new BizException(10007, "用户名已存在");
         }
         SysUser user = new SysUser();
+        user.setId(UUID.randomUUID());
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRealName(request.getRealName());
