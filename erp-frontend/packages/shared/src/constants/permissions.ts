@@ -48,3 +48,18 @@ export const PRODUCT_PERMISSIONS = {
 } as const;
 
 export type ProductPermissionCode = (typeof PRODUCT_PERMISSIONS)[keyof typeof PRODUCT_PERMISSIONS];
+
+export const MATERIAL_PERMISSIONS = {
+  ROOT: "material",
+  CATEGORY_LIST: "material:category:list",
+  CATEGORY_CREATE: "material:category:create",
+  CATEGORY_UPDATE: "material:category:update",
+  MATERIAL_LIST: "material:list",
+  MATERIAL_CREATE: "material:create",
+  MATERIAL_UPDATE: "material:update",
+  SUPPLIER_LIST: "material:supplier:list",
+  SUPPLIER_CREATE: "material:supplier:create",
+  SUPPLIER_UPDATE: "material:supplier:update"
+} as const;
+
+export type MaterialPermissionCode = (typeof MATERIAL_PERMISSIONS)[keyof typeof MATERIAL_PERMISSIONS];

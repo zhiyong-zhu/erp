@@ -5,6 +5,9 @@ import { fetchUserInfo } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoginPage } from "../pages/login/LoginPage";
+import { MaterialCategoryPage } from "../pages/material/categories/MaterialCategoryPage";
+import { MaterialManagementPage } from "../pages/material/materials/MaterialManagementPage";
+import { SupplierManagementPage } from "../pages/material/suppliers/SupplierManagementPage";
 import { ProductCategoryPage } from "../pages/product/categories/ProductCategoryPage";
 import { ProductManagementPage } from "../pages/product/products/ProductManagementPage";
 import { DepartmentManagementPage } from "../pages/system/departments/DepartmentManagementPage";
@@ -12,7 +15,7 @@ import { DictManagementPage } from "../pages/system/dicts/DictManagementPage";
 import { OperationLogPage } from "../pages/system/logs/OperationLogPage";
 import { RoleManagementPage } from "../pages/system/roles/RoleManagementPage";
 import { UserManagementPage } from "../pages/system/users/UserManagementPage";
-import { PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { clearAuth, getAuthState, saveUser, subscribeAuth } from "../store/auth";
 
 function resolveDefaultRoute() {
@@ -37,6 +40,15 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(PRODUCT_PERMISSIONS.CATEGORY_LIST)) {
     return "/product/categories";
+  }
+  if (permissions.includes(MATERIAL_PERMISSIONS.MATERIAL_LIST)) {
+    return "/material/materials";
+  }
+  if (permissions.includes(MATERIAL_PERMISSIONS.CATEGORY_LIST)) {
+    return "/material/categories";
+  }
+  if (permissions.includes(MATERIAL_PERMISSIONS.SUPPLIER_LIST)) {
+    return "/material/suppliers";
   }
   return "/login";
 }
@@ -97,6 +109,9 @@ export function AppRouter() {
             <Route path="/system/logs" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.LOG_LIST}><OperationLogPage /></PermissionGuard>} />
             <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
             <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />
+            <Route path="/material/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.CATEGORY_LIST}><MaterialCategoryPage /></PermissionGuard>} />
+            <Route path="/material/materials" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialManagementPage /></PermissionGuard>} />
+            <Route path="/material/suppliers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.SUPPLIER_LIST}><SupplierManagementPage /></PermissionGuard>} />
           </Route>
         </Routes>
       </Router>

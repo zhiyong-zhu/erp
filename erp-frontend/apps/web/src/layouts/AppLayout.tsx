@@ -2,7 +2,7 @@ import { ApartmentOutlined, FileSearchOutlined, LogoutOutlined, ProfileOutlined,
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
 import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
@@ -99,6 +99,37 @@ export function AppLayout() {
               }
             : null
         ].filter(Boolean)
+      },
+      {
+        key: "/material",
+        icon: <ApartmentOutlined />,
+        label: "原料管理",
+        children: [
+          hasPermission(MATERIAL_PERMISSIONS.CATEGORY_LIST)
+            ? {
+                key: "/material/categories",
+                icon: <ProfileOutlined />,
+                label: "分类管理",
+                onClick: () => navigate("/material/categories")
+              }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+            ? {
+                key: "/material/materials",
+                icon: <TeamOutlined />,
+                label: "原料列表",
+                onClick: () => navigate("/material/materials")
+              }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.SUPPLIER_LIST)
+            ? {
+                key: "/material/suppliers",
+                icon: <SafetyCertificateOutlined />,
+                label: "供应商管理",
+                onClick: () => navigate("/material/suppliers")
+              }
+            : null
+        ].filter(Boolean)
       }
     ].filter((item) => Array.isArray(item.children) && item.children.length > 0),
     [navigate, currentUser]
@@ -115,6 +146,12 @@ export function AppLayout() {
     selectedKeys = ["/product/categories"];
   } else if (location.pathname.startsWith("/product/products")) {
     selectedKeys = ["/product/products"];
+  } else if (location.pathname.startsWith("/material/categories")) {
+    selectedKeys = ["/material/categories"];
+  } else if (location.pathname.startsWith("/material/materials")) {
+    selectedKeys = ["/material/materials"];
+  } else if (location.pathname.startsWith("/material/suppliers")) {
+    selectedKeys = ["/material/suppliers"];
   }
 
   return (
