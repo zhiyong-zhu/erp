@@ -1,9 +1,11 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Space, Switch, Table, Typography } from "antd";
+import { SYSTEM_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { createDepartment, fetchDepartments, updateDepartment, updateDepartmentStatus } from "../../../api/system";
+import { hasPermission } from "../../../store/auth";
 import type { DepartmentPayload, DepartmentRecord } from "../../../types/system";
 
 const { Title, Text } = Typography;
@@ -18,6 +20,8 @@ export function DepartmentManagementPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<DepartmentRecord | null>(null);
   const { message } = App.useApp();
+  const canCreate = hasPermission(SYSTEM_PERMISSIONS.DEPT_CREATE);
+  const canUpdate = hasPermission(SYSTEM_PERMISSIONS.DEPT_UPDATE);
 
   const departmentOptions = useMemo(
     () => flattenDepartments(departments).map((department) => ({ label: `${department.name}（${department.code}）`, value: department.id })),
@@ -86,12 +90,12 @@ export function DepartmentManagementPage() {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="启用" unCheckedChildren="禁用" onChange={(checked) => void handleToggleStatus(record, checked)} />
+      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="启用" unCheckedChildren="禁用" disabled={!canUpdate} onChange={(checked) => void handleToggleStatus(record, checked)} />
     },
     {
       title: "操作",
       key: "actions",
-      render: (_, record) => <Button type="link" onClick={() => setEditingDepartment(record)}>编辑</Button>
+      render: (_, record) => <Button type="link" disabled={!canUpdate} onClick={() => setEditingDepartment(record)}>编辑</Button>
     }
   ];
 
@@ -102,7 +106,7 @@ export function DepartmentManagementPage() {
           <Title level={3} style={{ margin: 0 }}>系统管理 / 部门管理</Title>
           <Text type="secondary">维护组织架构树，供用户归属和后续数据权限使用。</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建部门</Button>
+        <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>新建部门</Button>
       </div>
 
       <Table rowKey="id" columns={columns} dataSource={departments} loading={loading} pagination={false} />

@@ -9,7 +9,7 @@ public class R<T> {
     public static <T> R<T> ok(T data) {
         R<T> result = new R<>();
         result.setCode(200);
-        result.setMessage("操作成功");
+        result.setMessage("success");
         result.setData(data);
         result.setTimestamp(System.currentTimeMillis());
         return result;

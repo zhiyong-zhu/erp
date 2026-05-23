@@ -95,3 +95,18 @@ body {
     align-items: flex-start;
   }
 }
+
+.permission-empty {
+  margin: 48px auto;
+  max-width: 560px;
+}
+
+.auth-loading-shell {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+}
+
+.role-form-card {
+  margin-top: 8px;
+}

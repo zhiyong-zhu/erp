@@ -12,7 +12,12 @@ import com.erp.system.domain.entity.SysPermission;
 import com.erp.system.domain.entity.SysRole;
 import com.erp.system.domain.entity.SysUser;
 import com.erp.system.domain.entity.SysUserRole;
+import com.erp.system.security.DataScopeContext;
+import com.erp.system.security.DataScopeLevel;
+import com.erp.system.security.DataScopeService;
+import com.erp.system.security.FieldPermissionService;
 import com.erp.system.domain.vo.PageVO;
+import com.erp.system.domain.vo.UserFieldPermissionVO;
 import com.erp.system.domain.vo.UserVO;
 import com.erp.system.mapper.SysDepartmentMapper;
 import com.erp.system.mapper.SysPermissionMapper;
@@ -36,19 +41,25 @@ public class SysUserServiceImpl implements SysUserService {
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysDepartmentMapper sysDepartmentMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DataScopeService dataScopeService;
+    private final FieldPermissionService fieldPermissionService;
 
     public SysUserServiceImpl(SysUserMapper sysUserMapper,
                               SysRoleMapper sysRoleMapper,
                               SysPermissionMapper sysPermissionMapper,
                               SysUserRoleMapper sysUserRoleMapper,
                               SysDepartmentMapper sysDepartmentMapper,
-                              PasswordEncoder passwordEncoder) {
+                              PasswordEncoder passwordEncoder,
+                              DataScopeService dataScopeService,
+                              FieldPermissionService fieldPermissionService) {
         this.sysUserMapper = sysUserMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysPermissionMapper = sysPermissionMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
         this.sysDepartmentMapper = sysDepartmentMapper;
         this.passwordEncoder = passwordEncoder;
+        this.dataScopeService = dataScopeService;
+        this.fieldPermissionService = fieldPermissionService;
     }
 
     @Override
@@ -69,12 +80,30 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
+    public List<Integer> getRoleDataScopes(UUID userId) {
+        return sysRoleMapper.selectByUserId(userId).stream()
+                .map(SysRole::getDataScope)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PageVO<UserVO> listUsers(long pageNum, long pageSize) {
+        DataScopeContext scope = dataScopeService.resolveCurrentScope();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getDeleted, false)
+                .orderByDesc(SysUser::getCreatedAt);
+        if (scope.getLevel() == DataScopeLevel.SELF && scope.getUserId() != null) {
+            queryWrapper.eq(SysUser::getId, scope.getUserId());
+        } else if (scope.getLevel() == DataScopeLevel.DEPARTMENT) {
+            if (scope.getDepartmentIds().isEmpty()) {
+                queryWrapper.isNull(SysUser::getId);
+            } else {
+                queryWrapper.in(SysUser::getDepartmentId, scope.getDepartmentIds());
+            }
+        }
         Page<SysUser> page = sysUserMapper.selectPage(
                 new Page<>(pageNum, pageSize),
-                new LambdaQueryWrapper<SysUser>()
-                        .eq(SysUser::getDeleted, false)
-                        .orderByDesc(SysUser::getCreatedAt));
+                queryWrapper);
         List<UserVO> records = page.getRecords().stream().map(this::toUserVO).collect(Collectors.toList());
         return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
@@ -84,6 +113,10 @@ public class SysUserServiceImpl implements SysUserService {
     public UserVO createUser(UserCreateRequest request) {
         if (getByUsername(request.getUsername()) != null) {
             throw new BizException(10007, "用户名已存在");
+        }
+        if (!fieldPermissionService.canEditUserSensitiveFields()) {
+            request.setPhone(null);
+            request.setEmail(null);
         }
         SysUser user = new SysUser();
         user.setId(UUID.randomUUID());
@@ -111,8 +144,10 @@ public class SysUserServiceImpl implements SysUserService {
             throw new BizException(10006, "用户不存在");
         }
         user.setRealName(request.getRealName());
-        user.setPhone(request.getPhone());
-        user.setEmail(request.getEmail());
+        if (fieldPermissionService.canEditUserSensitiveFields()) {
+            user.setPhone(request.getPhone());
+            user.setEmail(request.getEmail());
+        }
         user.setDepartmentId(request.getDepartmentId());
         user.setUpdatedBy(SecurityUtils.getUserId());
         user.setUpdatedAt(OffsetDateTime.now());
@@ -135,6 +170,19 @@ public class SysUserServiceImpl implements SysUserService {
         sysUserMapper.updateById(user);
     }
 
+    @Override
+    public DataScopeContext getCurrentDataScope() {
+        return dataScopeService.resolveCurrentScope();
+    }
+
+    @Override
+    public UserFieldPermissionVO getCurrentFieldPermissions() {
+        UserFieldPermissionVO vo = new UserFieldPermissionVO();
+        vo.setCanViewSensitiveFields(fieldPermissionService.canViewUserSensitiveFields());
+        vo.setCanEditSensitiveFields(fieldPermissionService.canEditUserSensitiveFields());
+        return vo;
+    }
+
     private void bindRoles(UUID userId, List<UUID> roleIds) {
         sysUserRoleMapper.deleteByUserId(userId);
         if (roleIds == null) {
@@ -153,8 +201,10 @@ public class SysUserServiceImpl implements SysUserService {
         userVO.setId(user.getId());
         userVO.setUsername(user.getUsername());
         userVO.setRealName(user.getRealName());
-        userVO.setPhone(user.getPhone());
-        userVO.setEmail(user.getEmail());
+        if (fieldPermissionService.canViewUserSensitiveFields()) {
+            userVO.setPhone(user.getPhone());
+            userVO.setEmail(user.getEmail());
+        }
         userVO.setDepartmentId(user.getDepartmentId());
         if (user.getDepartmentId() != null) {
             SysDepartment department = sysDepartmentMapper.selectById(user.getDepartmentId());

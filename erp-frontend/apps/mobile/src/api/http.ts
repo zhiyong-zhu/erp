@@ -1,6 +1,7 @@
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 
 let accessToken: string | null = null;
+let refreshToken: string | null = null;
 
 interface ApiResponse<T = unknown> {
   code: number;
@@ -15,6 +16,9 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  if (refreshToken) {
+    headers.set("X-Refresh-Token", refreshToken);
   }
 
   let response: Response;
@@ -41,4 +45,12 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken() {
   return accessToken;
+}
+
+export function setRefreshToken(token: string | null) {
+  refreshToken = token;
+}
+
+export function getRefreshToken() {
+  return refreshToken;
 }

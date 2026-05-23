@@ -58,18 +58,6 @@ INSERT INTO sys_role (id, name, code, description, data_scope, status)
 SELECT gen_random_uuid(), '系统管理员', 'ADMIN', '默认系统管理员角色', 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE code = 'ADMIN');
 
-INSERT INTO sys_permission (id, parent_id, name, code, type, path, icon, sort_order, status)
-SELECT gen_random_uuid(), NULL, '用户管理', 'system:user:list', 2, '/system/users', 'user', 1, 1
-WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE code = 'system:user:list');
-
-INSERT INTO sys_permission (id, parent_id, name, code, type, path, icon, sort_order, status)
-SELECT gen_random_uuid(), NULL, '创建用户', 'system:user:create', 3, NULL, NULL, 2, 1
-WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE code = 'system:user:create');
-
-INSERT INTO sys_permission (id, parent_id, name, code, type, path, icon, sort_order, status)
-SELECT gen_random_uuid(), NULL, '更新用户', 'system:user:update', 3, NULL, NULL, 3, 1
-WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE code = 'system:user:update');
-
 INSERT INTO sys_user (id, username, password, real_name, status, deleted)
 SELECT gen_random_uuid(),
        'admin',
@@ -86,13 +74,4 @@ JOIN sys_role r ON r.code = 'ADMIN'
 WHERE u.username = 'admin'
   AND NOT EXISTS (
       SELECT 1 FROM sys_user_role ur WHERE ur.user_id = u.id AND ur.role_id = r.id
-  );
-
-INSERT INTO sys_role_permission (role_id, permission_id)
-SELECT r.id, p.id
-FROM sys_role r
-JOIN sys_permission p ON p.code IN ('system:user:list', 'system:user:create', 'system:user:update')
-WHERE r.code = 'ADMIN'
-  AND NOT EXISTS (
-      SELECT 1 FROM sys_role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id
   );

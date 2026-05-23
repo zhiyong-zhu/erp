@@ -28,6 +28,7 @@ export interface RoleRecord {
   dataScope: number;
   status: number;
   createdAt?: string;
+  permissionIds?: string[];
 }
 
 export interface RolePayload {
@@ -35,4 +36,76 @@ export interface RolePayload {
   code: string;
   description?: string;
   dataScope?: number;
+  permissionIds?: string[];
+}
+
+export interface PermissionRecord {
+  id: string;
+  parentId?: string | null;
+  name: string;
+  code: string;
+  type: number;
+  path?: string | null;
+  icon?: string | null;
+  sortOrder?: number | null;
+  status: number;
+  children?: PermissionRecord[];
+}
+
+export interface DictTypeRecord {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  status: number;
+  createdAt?: string;
+}
+
+export interface DictTypePayload {
+  name: string;
+  code: string;
+  description?: string;
+  status?: number;
+}
+
+export interface DictDataRecord {
+  id: string;
+  dictTypeCode: string;
+  label: string;
+  value: string;
+  sortOrder: number;
+  cssClass?: string | null;
+  status: number;
+  createdAt?: string;
+}
+
+export interface DictDataPayload {
+  label: string;
+  value: string;
+  sortOrder?: number;
+  cssClass?: string;
+  status?: number;
+}
+
+export interface OperationLogRecord {
+  id: number;
+  userId?: string | null;
+  username?: string | null;
+  module: string;
+  action: string;
+  description?: string | null;
+  method?: string | null;
+  requestUrl?: string | null;
+  requestParams?: string | null;
+  responseCode?: number | null;
+  ip?: string | null;
+  duration?: number | null;
+  traceId?: string | null;
+  success?: boolean | null;
+  errorMessage?: string | null;
+  dataScopeLevel?: string | null;
+  dataScopeSnapshot?: string | null;
+  fieldPermissionSnapshot?: string | null;
+  auditTags?: string | null;
+  createdAt?: string;
 }

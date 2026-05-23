@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const ACCESS_TOKEN_KEY = "erp.accessToken";
+const REFRESH_TOKEN_KEY = "erp.refreshToken";
 
 interface ApiResponse<T = unknown> {
   code: number;
@@ -18,6 +19,10 @@ http.interceptors.request.use((config) => {
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    config.headers["X-Refresh-Token"] = refreshToken;
   }
   return config;
 });
@@ -42,4 +47,16 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 }

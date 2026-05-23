@@ -1,10 +1,13 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { ModalForm, ProFormSelect, ProFormText } from "@ant-design/pro-components";
-import { App, Button, Switch, Table, Typography } from "antd";
+import { App, Button, Card, Space, Switch, Table, Tree, Typography } from "antd";
+import { SYSTEM_PERMISSIONS } from "@erp/shared";
+import type { DataNode } from "antd/es/tree";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
-import { createRole, fetchRoles, updateRole, updateRoleStatus } from "../../../api/system";
-import type { RolePayload, RoleRecord } from "../../../types/system";
+import { useEffect, useMemo, useState } from "react";
+import { createRole, fetchPermissionTree, fetchRoles, updateRole, updateRoleStatus } from "../../../api/system";
+import { hasPermission } from "../../../store/auth";
+import type { PermissionRecord, RolePayload, RoleRecord } from "../../../types/system";
 
 const { Title, Text } = Typography;
 
@@ -17,12 +20,16 @@ const dataScopeOptions = [
 export function RoleManagementPage() {
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const { message } = App.useApp();
+  const canCreate = hasPermission(SYSTEM_PERMISSIONS.ROLE_CREATE);
+  const canUpdate = hasPermission(SYSTEM_PERMISSIONS.ROLE_UPDATE);
+  const treeData = useMemo<DataNode[]>(() => buildTreeNodes(permissions), [permissions]);
 
   async function loadRoles(nextPageNum = pageNum, nextPageSize = pageSize) {
     setLoading(true);
@@ -41,9 +48,10 @@ export function RoleManagementPage() {
 
   useEffect(() => {
     void loadRoles();
+    void fetchPermissionTree().then(setPermissions).catch(() => undefined);
   }, []);
 
-  async function handleCreate(values: RolePayload) {
+  async function handleCreate(values: RolePayload & { permissionIds?: string[] }) {
     try {
       await createRole(values);
       message.success("角色创建成功");
@@ -56,7 +64,7 @@ export function RoleManagementPage() {
     }
   }
 
-  async function handleUpdate(values: RolePayload) {
+  async function handleUpdate(values: RolePayload & { permissionIds?: string[] }) {
     if (!editingRole) return false;
     try {
       await updateRole(editingRole.id, values);
@@ -94,12 +102,16 @@ export function RoleManagementPage() {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="启用" unCheckedChildren="禁用" onChange={(checked) => void handleToggleStatus(record, checked)} />
+      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="启用" unCheckedChildren="禁用" disabled={!canUpdate} onChange={(checked) => void handleToggleStatus(record, checked)} />
     },
     {
       title: "操作",
       key: "actions",
-      render: (_, record) => <Button type="link" onClick={() => setEditingRole(record)}>编辑</Button>
+      render: (_, record) => (
+        <Space size="small">
+          <Button type="link" disabled={!canUpdate} onClick={() => setEditingRole(record)}>编辑</Button>
+        </Space>
+      )
     }
   ];
 
@@ -110,7 +122,7 @@ export function RoleManagementPage() {
           <Title level={3} style={{ margin: 0 }}>系统管理 / 角色管理</Title>
           <Text type="secondary">维护 RBAC 角色和数据权限范围。</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建角色</Button>
+        <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>新建角色</Button>
       </div>
 
       <Table
@@ -128,17 +140,26 @@ export function RoleManagementPage() {
         }}
       />
 
-      <RoleForm title="新建角色" open={createOpen} initialValues={{ dataScope: 1 }} onCancel={() => setCreateOpen(false)} onFinish={handleCreate} />
+      <RoleForm
+        title="新建角色"
+        open={createOpen}
+        treeData={treeData}
+        initialValues={{ dataScope: 1, permissionIds: [] }}
+        onCancel={() => setCreateOpen(false)}
+        onFinish={handleCreate}
+      />
       <RoleForm
         title="编辑角色"
         open={!!editingRole}
+        treeData={treeData}
         initialValues={
           editingRole
             ? {
                 name: editingRole.name,
                 code: editingRole.code,
                 description: editingRole.description ?? "",
-                dataScope: editingRole.dataScope
+                dataScope: editingRole.dataScope,
+                permissionIds: editingRole.permissionIds ?? []
               }
             : undefined
         }
@@ -149,19 +170,59 @@ export function RoleManagementPage() {
   );
 }
 
-function RoleForm({ title, open, initialValues, onCancel, onFinish }: {
+function RoleForm({ title, open, initialValues, treeData, onCancel, onFinish }: {
   title: string;
   open: boolean;
-  initialValues?: Partial<RolePayload>;
+  initialValues?: Partial<RolePayload & { permissionIds?: string[] }>;
+  treeData: DataNode[];
   onCancel: () => void;
-  onFinish: (values: RolePayload) => Promise<boolean>;
+  onFinish: (values: RolePayload & { permissionIds?: string[] }) => Promise<boolean>;
 }) {
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setCheckedKeys((initialValues?.permissionIds as string[] | undefined) ?? []);
+    } else {
+      setCheckedKeys([]);
+    }
+  }, [initialValues?.permissionIds, open]);
+
   return (
-    <ModalForm<RolePayload> title={title} open={open} initialValues={initialValues} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
+    <ModalForm<RolePayload & { permissionIds?: string[] }>
+      title={title}
+      open={open}
+      width={920}
+      initialValues={initialValues}
+      modalProps={{ destroyOnClose: true, onCancel }}
+      onFinish={(values) => onFinish({ ...values, permissionIds: checkedKeys })}
+    >
       <ProFormText name="name" label="角色名称" rules={[{ required: true }]} />
       <ProFormText name="code" label="角色编码" rules={[{ required: true }]} />
       <ProFormText name="description" label="描述" />
       <ProFormSelect name="dataScope" label="数据范围" options={dataScopeOptions} rules={[{ required: true }]} />
+      <Card size="small" title="功能权限" className="role-form-card">
+        <Text type="secondary">目录、菜单、按钮和字段权限统一在这里分配。数据范围在上方单独配置，不放进权限树。</Text>
+        <Tree checkable defaultExpandAll checkedKeys={checkedKeys} onCheck={(keys) => setCheckedKeys((keys as string[]) ?? [])} treeData={treeData} />
+      </Card>
     </ModalForm>
   );
+}
+
+function buildTreeNodes(records: PermissionRecord[]): DataNode[] {
+  return records.map((record) => ({
+    key: record.id,
+    title: `${renderTypeLabel(record.type)} ${record.name}${record.code ? ` (${record.code})` : ""}`,
+    children: buildTreeNodes(record.children ?? [])
+  }));
+}
+
+function renderTypeLabel(type: number) {
+  if (type === 1) {
+    return "[目录]";
+  }
+  if (type === 2) {
+    return "[菜单]";
+  }
+  return "[按钮]";
 }

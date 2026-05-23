@@ -1,6 +1,8 @@
 package com.erp.system.domain.vo;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class RoleVO {
@@ -11,6 +13,7 @@ public class RoleVO {
     private Integer dataScope;
     private Integer status;
     private OffsetDateTime createdAt;
+    private List<UUID> permissionIds = new ArrayList<>();
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -26,4 +29,6 @@ public class RoleVO {
     public void setStatus(Integer status) { this.status = status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public List<UUID> getPermissionIds() { return permissionIds; }
+    public void setPermissionIds(List<UUID> permissionIds) { this.permissionIds = permissionIds; }
 }

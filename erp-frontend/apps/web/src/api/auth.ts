@@ -1,4 +1,5 @@
-import { http, setAccessToken } from "./http";
+import { http } from "./http";
+import { clearAuth, saveTokens } from "../store/auth";
 import type { LoginRequest, LoginResponse, UserInfo } from "../types/auth";
 
 interface ApiResponse<T> {
@@ -11,13 +12,16 @@ interface ApiResponse<T> {
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const response = await http.post<ApiResponse<LoginResponse>>("/auth/login", payload);
   const data = response.data.data;
-  setAccessToken(data.accessToken);
+  saveTokens(data.accessToken, data.refreshToken);
   return data;
 }
 
 export async function logout(): Promise<void> {
-  await http.post("/auth/logout");
-  setAccessToken(null);
+  try {
+    await http.post("/auth/logout");
+  } finally {
+    clearAuth();
+  }
 }
 
 export async function fetchUserInfo(): Promise<UserInfo> {

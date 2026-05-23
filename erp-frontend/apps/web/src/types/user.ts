@@ -29,3 +29,14 @@ export interface UserUpdatePayload {
   departmentId?: string | null;
   roleIds: string[];
 }
+
+export interface DataScopeInfo {
+  level: "ALL" | "DEPARTMENT" | "SELF";
+  userId?: string | null;
+  departmentIds: string[];
+}
+
+export interface UserFieldPermissionInfo {
+  canViewSensitiveFields: boolean;
+  canEditSensitiveFields: boolean;
+}

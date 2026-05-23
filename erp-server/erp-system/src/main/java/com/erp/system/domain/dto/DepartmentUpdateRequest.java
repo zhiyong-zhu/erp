@@ -1,10 +1,13 @@
 package com.erp.system.domain.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import java.util.UUID;
 
 public class DepartmentUpdateRequest {
     private UUID parentId;
+    @NotBlank(message = "部门名称不能为空")
     private String name;
+    @NotBlank(message = "部门编码不能为空")
     private String code;
     private String leader;
     private String phone;

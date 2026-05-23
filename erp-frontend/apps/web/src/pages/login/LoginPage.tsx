@@ -1,12 +1,27 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Form, Input, Typography } from "antd";
+import { SYSTEM_PERMISSIONS } from "@erp/shared";
 import { login, fetchUserInfo } from "../../api/auth";
-import { saveAccessToken, saveUser } from "../../store/auth";
+import { getAuthState, saveUser, subscribeAuth } from "../../store/auth";
 import type { LoginRequest } from "../../types/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
+
+function resolveDefaultRoute() {
+  const permissions = getAuthState().user?.permissions ?? [];
+  if (permissions.includes(SYSTEM_PERMISSIONS.USER_LIST)) {
+    return "/system/users";
+  }
+  if (permissions.includes(SYSTEM_PERMISSIONS.DEPT_LIST)) {
+    return "/system/departments";
+  }
+  if (permissions.includes(SYSTEM_PERMISSIONS.ROLE_LIST)) {
+    return "/system/roles";
+  }
+  return "/login";
+}
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -14,16 +29,21 @@ export function LoginPage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
 
+  useEffect(() => subscribeAuth(() => {
+    if (getAuthState().accessToken && getAuthState().user) {
+      navigate(resolveDefaultRoute(), { replace: true });
+    }
+  }), [navigate]);
+
   async function onFinish(values: LoginRequest) {
     setLoading(true);
     setError(null);
     try {
-      const result = await login(values);
-      saveAccessToken(result.accessToken);
+      await login(values);
       const user = await fetchUserInfo();
       saveUser(user);
       message.success("登录成功");
-      navigate("/system/users", { replace: true });
+      navigate(resolveDefaultRoute(), { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "登录失败，请检查用户名和密码");
     } finally {

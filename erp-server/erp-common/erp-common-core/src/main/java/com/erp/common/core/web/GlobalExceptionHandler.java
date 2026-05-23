@@ -24,6 +24,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public R<Void> handleException(Exception ex) {
-        return R.fail(10006, ex.getMessage() == null ? "服务器内部错误" : ex.getMessage());
+        return R.fail(10006, "服务器内部错误");
     }
 }

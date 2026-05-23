@@ -2,8 +2,8 @@ package com.erp.system.service.impl;
 
 import com.erp.common.core.exception.BizException;
 import com.erp.common.security.domain.LoginUser;
-import com.erp.common.security.service.TokenService;
 import com.erp.common.security.util.SecurityUtils;
+import com.erp.common.security.service.TokenService;
 import com.erp.system.domain.dto.LoginRequest;
 import com.erp.system.domain.dto.RefreshTokenRequest;
 import com.erp.system.domain.entity.SysUser;
@@ -12,6 +12,7 @@ import com.erp.system.domain.vo.UserInfoVO;
 import com.erp.system.service.AuthService;
 import com.erp.system.service.SysUserService;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,13 +22,16 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserService sysUserService;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final HttpServletRequest httpServletRequest;
 
     public AuthServiceImpl(SysUserService sysUserService,
                            PasswordEncoder passwordEncoder,
-                           TokenService tokenService) {
+                           TokenService tokenService,
+                           HttpServletRequest httpServletRequest) {
         this.sysUserService = sysUserService;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+        this.httpServletRequest = httpServletRequest;
     }
 
     @Override
@@ -58,6 +62,9 @@ public class AuthServiceImpl implements AuthService {
         if (!"refresh".equals(claims.get("type", String.class))) {
             throw new BizException(10001, "非法refreshToken");
         }
+        if (!tokenService.isRefreshTokenActive(request.getRefreshToken())) {
+            throw new BizException(10001, "未登录或Token已过期");
+        }
         SysUser user = sysUserService.getByUsername(claims.getSubject());
         if (user == null || user.getStatus() == null || user.getStatus() != 1) {
             throw new BizException(10001, "用户不存在或不可用");
@@ -74,11 +81,18 @@ public class AuthServiceImpl implements AuthService {
         response.setAccessToken(tokenService.createAccessToken(loginUser));
         response.setRefreshToken(tokenService.createRefreshToken(loginUser));
         response.setExpiresIn(tokenService.getAccessTokenExpireSeconds());
+        tokenService.revokeRefreshToken(request.getRefreshToken());
         return response;
     }
 
     @Override
-    public void logout() {
+    public void logout(String refreshToken) {
+        String authorization = httpServletRequest.getHeader("Authorization");
+        String accessToken = null;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            accessToken = authorization.substring(7);
+        }
+        tokenService.revokeUserTokens(accessToken, refreshToken);
     }
 
     @Override

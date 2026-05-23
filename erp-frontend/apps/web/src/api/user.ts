@@ -1,6 +1,6 @@
 import { http } from "./http";
 import type { PageQuery, PageResult } from "../types/page";
-import type { UserCreatePayload, UserRecord, UserUpdatePayload } from "../types/user";
+import type { DataScopeInfo, UserCreatePayload, UserFieldPermissionInfo, UserRecord, UserUpdatePayload } from "../types/user";
 
 interface ApiResponse<T> {
   code: number;
@@ -26,4 +26,14 @@ export async function updateUser(id: string, payload: UserUpdatePayload): Promis
 
 export async function updateUserStatus(id: string, status: number): Promise<void> {
   await http.put(`/system/users/${id}/status`, { status });
+}
+
+export async function fetchUserDataScope(): Promise<DataScopeInfo> {
+  const response = await http.get<ApiResponse<DataScopeInfo>>("/system/users/data-scope");
+  return response.data.data;
+}
+
+export async function fetchUserFieldPermissions(): Promise<UserFieldPermissionInfo> {
+  const response = await http.get<ApiResponse<UserFieldPermissionInfo>>("/system/users/field-permissions");
+  return response.data.data;
 }

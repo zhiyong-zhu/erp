@@ -8,6 +8,6 @@ import com.erp.system.domain.vo.UserInfoVO;
 public interface AuthService {
     LoginResponse login(LoginRequest request);
     LoginResponse refresh(RefreshTokenRequest request);
-    void logout();
+    void logout(String refreshToken);
     UserInfoVO userInfo();
 }

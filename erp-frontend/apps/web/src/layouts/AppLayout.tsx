@@ -1,8 +1,10 @@
-import { ApartmentOutlined, LogoutOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, FileSearchOutlined, LogoutOutlined, ProfileOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from "@ant-design/icons";
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
-import { saveAccessToken, saveUser } from "../store/auth";
+import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -11,16 +13,81 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { message } = AntApp.useApp();
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => subscribeAuth(() => forceUpdate((value) => value + 1)), []);
 
   async function handleLogout() {
     try {
       await logout();
     } finally {
-      saveAccessToken(null);
-      saveUser(null);
+      clearAuth();
       message.success("已退出登录");
       navigate("/login", { replace: true });
     }
+  }
+
+  const currentUser = getAuthState().user;
+  const menuItems = useMemo(
+    () => [
+      {
+        key: "/system",
+        icon: <SettingOutlined />,
+        label: "系统管理",
+        children: [
+          hasPermission(SYSTEM_PERMISSIONS.USER_LIST)
+            ? {
+                key: "/system/users",
+                icon: <TeamOutlined />,
+                label: "用户管理",
+                onClick: () => navigate("/system/users")
+              }
+            : null,
+          hasPermission(SYSTEM_PERMISSIONS.DEPT_LIST)
+            ? {
+                key: "/system/departments",
+                icon: <ApartmentOutlined />,
+                label: "部门管理",
+                onClick: () => navigate("/system/departments")
+              }
+            : null,
+          hasPermission(SYSTEM_PERMISSIONS.ROLE_LIST)
+            ? {
+                key: "/system/roles",
+                icon: <SafetyCertificateOutlined />,
+                label: "角色管理",
+                onClick: () => navigate("/system/roles")
+              }
+            : null,
+          hasPermission(SYSTEM_PERMISSIONS.DICT_LIST)
+            ? {
+                key: "/system/dict",
+                icon: <ProfileOutlined />,
+                label: "数据字典",
+                onClick: () => navigate("/system/dict")
+              }
+            : null,
+          hasPermission(SYSTEM_PERMISSIONS.LOG_LIST)
+            ? {
+                key: "/system/logs",
+                icon: <FileSearchOutlined />,
+                label: "操作日志",
+                onClick: () => navigate("/system/logs")
+              }
+            : null
+        ].filter(Boolean)
+      }
+    ].filter((item) => Array.isArray(item.children) && item.children.length > 0),
+    [navigate, currentUser]
+  );
+
+  let selectedKeys = [location.pathname];
+  if (location.pathname.startsWith("/system/roles/")) {
+    selectedKeys = ["/system/roles"];
+  } else if (location.pathname.startsWith("/system/dict")) {
+    selectedKeys = ["/system/dict"];
+  } else if (location.pathname.startsWith("/system/logs")) {
+    selectedKeys = ["/system/logs"];
   }
 
   return (
@@ -36,41 +103,17 @@ export function AppLayout() {
         <Menu
           mode="inline"
           defaultOpenKeys={["/system"]}
-          selectedKeys={[location.pathname]}
-          items={[
-            {
-              key: "/system",
-              icon: <SettingOutlined />,
-              label: "系统管理",
-              children: [
-                {
-                  key: "/system/users",
-                  icon: <TeamOutlined />,
-                  label: "用户管理",
-                  onClick: () => navigate("/system/users")
-                },
-                {
-                  key: "/system/departments",
-                  icon: <ApartmentOutlined />,
-                  label: "部门管理",
-                  onClick: () => navigate("/system/departments")
-                },
-                {
-                  key: "/system/roles",
-                  icon: <SafetyCertificateOutlined />,
-                  label: "角色管理",
-                  onClick: () => navigate("/system/roles")
-                }
-              ]
-            }
-          ]}
+          selectedKeys={selectedKeys}
+          items={menuItems}
         />
       </Sider>
       <Layout>
         <Header className="erp-header erp-header-between">
           <div>
             <Title level={4} style={{ margin: 0 }}>ERP 管理后台</Title>
-            <Text type="secondary">登录与用户管理功能已接通</Text>
+            <Text type="secondary">
+              {currentUser ? `${currentUser.realName || currentUser.username} 已登录，当前开放系统管理模块。` : "登录与用户管理功能已接通"}
+            </Text>
           </div>
           <Button icon={<LogoutOutlined />} onClick={() => void handleLogout()}>
             退出登录

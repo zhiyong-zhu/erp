@@ -1,9 +1,11 @@
 package com.erp.system.domain.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.UUID;
 
 public class UserUpdateRequest {
+    @NotBlank(message = "姓名不能为空")
     private String realName;
     private String phone;
     private String email;

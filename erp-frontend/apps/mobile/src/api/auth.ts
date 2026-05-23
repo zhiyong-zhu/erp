@@ -1,4 +1,5 @@
-import { request, setAccessToken } from "./http";
+import { request } from "./http";
+import { saveAccessToken, saveRefreshToken, saveTokens } from "../store/auth";
 import type { LoginRequest, LoginResponse, UserInfo } from "../types/auth";
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
@@ -6,7 +7,7 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
     method: "POST",
     body: JSON.stringify(payload)
   });
-  setAccessToken(data.accessToken);
+  saveTokens(data.accessToken, data.refreshToken);
   return data;
 }
 
@@ -14,7 +15,8 @@ export async function logout(): Promise<void> {
   try {
     await request<void>("/auth/logout", { method: "POST" });
   } finally {
-    setAccessToken(null);
+    saveAccessToken(null);
+    saveRefreshToken(null);
   }
 }
 
