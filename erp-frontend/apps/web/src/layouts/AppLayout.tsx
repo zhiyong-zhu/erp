@@ -1,4 +1,4 @@
-import { LogoutOutlined, TeamOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, LogoutOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from "@ant-design/icons";
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../api/auth";
@@ -35,13 +35,33 @@ export function AppLayout() {
         </div>
         <Menu
           mode="inline"
+          defaultOpenKeys={["/system"]}
           selectedKeys={[location.pathname]}
           items={[
             {
-              key: "/system/users",
-              icon: <TeamOutlined />,
-              label: "系统管理 / 用户管理",
-              onClick: () => navigate("/system/users")
+              key: "/system",
+              icon: <SettingOutlined />,
+              label: "系统管理",
+              children: [
+                {
+                  key: "/system/users",
+                  icon: <TeamOutlined />,
+                  label: "用户管理",
+                  onClick: () => navigate("/system/users")
+                },
+                {
+                  key: "/system/departments",
+                  icon: <ApartmentOutlined />,
+                  label: "部门管理",
+                  onClick: () => navigate("/system/departments")
+                },
+                {
+                  key: "/system/roles",
+                  icon: <SafetyCertificateOutlined />,
+                  label: "角色管理",
+                  onClick: () => navigate("/system/roles")
+                }
+              ]
             }
           ]}
         />

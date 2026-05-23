@@ -1099,6 +1099,8 @@ database/
 }
 ```
 
+分页参数默认规则：`pageNum` 从 1 开始，默认 `pageSize=10`；后台管理列表优先使用服务端分页。组织架构类树形数据（如部门树）默认全量返回树结构，后续数据量较大时再扩展 `parentId` 懒加载。
+
 **统一响应格式：**
 ```json
 {
@@ -2518,15 +2520,19 @@ POST /api/v1/auth/login
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /api/v1/system/users | 用户列表 |
+| GET | /api/v1/system/users?pageNum=1&pageSize=10 | 用户列表（分页） |
 | POST | /api/v1/system/users | 创建用户 |
 | PUT | /api/v1/system/users/{id} | 更新用户 |
 | PUT | /api/v1/system/users/{id}/status | 启停用户 |
-| GET | /api/v1/system/roles | 角色列表 |
+| GET | /api/v1/system/roles?pageNum=1&pageSize=10 | 角色列表（分页） |
 | POST | /api/v1/system/roles | 创建角色 |
+| PUT | /api/v1/system/roles/{id} | 更新角色 |
+| PUT | /api/v1/system/roles/{id}/status | 启停角色 |
 | PUT | /api/v1/system/roles/{id}/permissions | 分配角色权限 |
-| GET | /api/v1/system/departments/tree | 部门树 |
+| GET | /api/v1/system/departments | 部门树（全量，不分页） |
 | POST | /api/v1/system/departments | 创建部门 |
+| PUT | /api/v1/system/departments/{id} | 更新部门 |
+| PUT | /api/v1/system/departments/{id}/status | 启停部门 |
 | GET | /api/v1/system/dicts/{code} | 获取字典项 |
 | GET | /api/v1/system/serial-rules | 编号规则列表 |
 | PUT | /api/v1/system/serial-rules/{id} | 更新编号规则 |

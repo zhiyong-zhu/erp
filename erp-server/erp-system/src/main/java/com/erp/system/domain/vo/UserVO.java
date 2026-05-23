@@ -11,7 +11,9 @@ public class UserVO {
     private String phone;
     private String email;
     private UUID departmentId;
+    private String departmentName;
     private Integer status;
+    private List<UUID> roleIds;
     private List<String> roleCodes;
     private OffsetDateTime createdAt;
 
@@ -27,8 +29,12 @@ public class UserVO {
     public void setEmail(String email) { this.email = email; }
     public UUID getDepartmentId() { return departmentId; }
     public void setDepartmentId(UUID departmentId) { this.departmentId = departmentId; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public List<UUID> getRoleIds() { return roleIds; }
+    public void setRoleIds(List<UUID> roleIds) { this.roleIds = roleIds; }
     public List<String> getRoleCodes() { return roleCodes; }
     public void setRoleCodes(List<String> roleCodes) { this.roleCodes = roleCodes; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

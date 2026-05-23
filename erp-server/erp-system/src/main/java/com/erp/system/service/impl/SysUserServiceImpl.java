@@ -1,23 +1,26 @@
 package com.erp.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.system.domain.dto.UserCreateRequest;
 import com.erp.system.domain.dto.UserStatusUpdateRequest;
 import com.erp.system.domain.dto.UserUpdateRequest;
+import com.erp.system.domain.entity.SysDepartment;
 import com.erp.system.domain.entity.SysPermission;
 import com.erp.system.domain.entity.SysRole;
 import com.erp.system.domain.entity.SysUser;
 import com.erp.system.domain.entity.SysUserRole;
+import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.UserVO;
+import com.erp.system.mapper.SysDepartmentMapper;
 import com.erp.system.mapper.SysPermissionMapper;
 import com.erp.system.mapper.SysRoleMapper;
 import com.erp.system.mapper.SysUserMapper;
 import com.erp.system.mapper.SysUserRoleMapper;
 import com.erp.system.service.SysUserService;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,17 +34,20 @@ public class SysUserServiceImpl implements SysUserService {
     private final SysRoleMapper sysRoleMapper;
     private final SysPermissionMapper sysPermissionMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysDepartmentMapper sysDepartmentMapper;
     private final PasswordEncoder passwordEncoder;
 
     public SysUserServiceImpl(SysUserMapper sysUserMapper,
                               SysRoleMapper sysRoleMapper,
                               SysPermissionMapper sysPermissionMapper,
                               SysUserRoleMapper sysUserRoleMapper,
+                              SysDepartmentMapper sysDepartmentMapper,
                               PasswordEncoder passwordEncoder) {
         this.sysUserMapper = sysUserMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysPermissionMapper = sysPermissionMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
+        this.sysDepartmentMapper = sysDepartmentMapper;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -63,13 +69,14 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public List<UserVO> listUsers() {
-        List<SysUser> users = sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeleted, false));
-        List<UserVO> result = new ArrayList<>();
-        for (SysUser user : users) {
-            result.add(toUserVO(user));
-        }
-        return result;
+    public PageVO<UserVO> listUsers(long pageNum, long pageSize) {
+        Page<SysUser> page = sysUserMapper.selectPage(
+                new Page<>(pageNum, pageSize),
+                new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getDeleted, false)
+                        .orderByDesc(SysUser::getCreatedAt));
+        List<UserVO> records = page.getRecords().stream().map(this::toUserVO).collect(Collectors.toList());
+        return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
 
     @Override
@@ -110,7 +117,9 @@ public class SysUserServiceImpl implements SysUserService {
         user.setUpdatedBy(SecurityUtils.getUserId());
         user.setUpdatedAt(OffsetDateTime.now());
         sysUserMapper.updateById(user);
-        bindRoles(id, request.getRoleIds());
+        if (request.getRoleIds() != null) {
+            bindRoles(id, request.getRoleIds());
+        }
         return toUserVO(user);
     }
 
@@ -147,8 +156,13 @@ public class SysUserServiceImpl implements SysUserService {
         userVO.setPhone(user.getPhone());
         userVO.setEmail(user.getEmail());
         userVO.setDepartmentId(user.getDepartmentId());
+        if (user.getDepartmentId() != null) {
+            SysDepartment department = sysDepartmentMapper.selectById(user.getDepartmentId());
+            userVO.setDepartmentName(department == null ? null : department.getName());
+        }
         userVO.setStatus(user.getStatus());
         userVO.setCreatedAt(user.getCreatedAt());
+        userVO.setRoleIds(sysUserRoleMapper.selectRoleIdsByUserId(user.getId()));
         userVO.setRoleCodes(getRoleCodes(user.getId()));
         return userVO;
     }

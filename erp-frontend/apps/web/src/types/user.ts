@@ -5,7 +5,9 @@ export interface UserRecord {
   phone?: string | null;
   email?: string | null;
   departmentId?: string | null;
+  departmentName?: string | null;
   status: number;
+  roleIds?: string[];
   roleCodes: string[];
   createdAt?: string;
 }

@@ -1,4 +1,5 @@
 import { http } from "./http";
+import type { PageQuery, PageResult } from "../types/page";
 import type { UserCreatePayload, UserRecord, UserUpdatePayload } from "../types/user";
 
 interface ApiResponse<T> {
@@ -8,8 +9,8 @@ interface ApiResponse<T> {
   timestamp: number;
 }
 
-export async function fetchUsers(): Promise<UserRecord[]> {
-  const response = await http.get<ApiResponse<UserRecord[]>>("/system/users");
+export async function fetchUsers(query: PageQuery): Promise<PageResult<UserRecord>> {
+  const response = await http.get<ApiResponse<PageResult<UserRecord>>>("/system/users", { params: query });
   return response.data.data;
 }
 

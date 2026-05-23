@@ -4,10 +4,10 @@ import com.erp.common.core.domain.R;
 import com.erp.system.domain.dto.UserCreateRequest;
 import com.erp.system.domain.dto.UserStatusUpdateRequest;
 import com.erp.system.domain.dto.UserUpdateRequest;
+import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.UserVO;
 import com.erp.system.service.SysUserService;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,8 +29,9 @@ public class SysUserController {
     }
 
     @GetMapping
-    public R<List<UserVO>> list() {
-        return R.ok(sysUserService.listUsers());
+    public R<PageVO<UserVO>> list(@RequestParam(defaultValue = "1") long pageNum,
+                                  @RequestParam(defaultValue = "10") long pageSize) {
+        return R.ok(sysUserService.listUsers(pageNum, pageSize));
     }
 
     @PostMapping

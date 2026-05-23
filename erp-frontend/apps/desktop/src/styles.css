@@ -154,3 +154,90 @@ input {
 .desktop-user-panel span {
   overflow-wrap: anywhere;
 }
+
+.desktop-workspace-shell {
+  place-items: stretch;
+}
+
+.desktop-workspace {
+  width: min(1080px, 100%);
+  margin: auto;
+}
+
+.desktop-workspace-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.desktop-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.desktop-tabs button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  background: #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+}
+
+.desktop-tabs button.active {
+  background: #0f766e;
+  color: #fff;
+}
+
+.desktop-management-grid {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.desktop-mini-form,
+.desktop-list-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #f8fafc;
+}
+
+.desktop-mini-form h2,
+.desktop-list-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.desktop-mini-form input {
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0 12px;
+  outline: none;
+}
+
+.desktop-list-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.desktop-list-item span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .desktop-workspace-header,
+  .desktop-management-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}
