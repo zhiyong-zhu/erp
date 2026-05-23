@@ -1,12 +1,13 @@
 package com.erp.product.domain.dto;
 
+import com.erp.common.core.domain.BaseDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.UUID;
 
-public class ProductCreateRequest {
+public class ProductCreateRequest extends BaseDTO {
     @NotBlank(message = "产品编码不能为空")
     private String code;
     @NotBlank(message = "产品名称不能为空")

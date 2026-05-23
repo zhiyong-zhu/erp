@@ -12,10 +12,15 @@ public final class ProductPermissionCodes {
     public static final String PRODUCT_UPDATE = "product:update";
     public static final String PRODUCT_DETAIL = "product:detail";
     public static final String PRODUCT_COST = "product:cost";
+    public static final String PRODUCT_IMPORT = "product:import";
+    public static final String PRODUCT_EXPORT = "product:export";
     public static final String PACKAGE_LIST = "product:package:list";
     public static final String PACKAGE_UPDATE = "product:package:update";
     public static final String LABEL_LIST = "product:label:list";
     public static final String LABEL_UPDATE = "product:label:update";
+    public static final String LABEL_PRINT = "product:label:print";
+    public static final String BOM_LIST = "product:bom:list";
+    public static final String BOM_UPDATE = "product:bom:update";
 
     private ProductPermissionCodes() {
     }

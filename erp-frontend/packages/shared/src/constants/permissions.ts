@@ -36,10 +36,15 @@ export const PRODUCT_PERMISSIONS = {
   PRODUCT_UPDATE: "product:update",
   PRODUCT_DETAIL: "product:detail",
   PRODUCT_COST: "product:cost",
+  PRODUCT_IMPORT: "product:import",
+  PRODUCT_EXPORT: "product:export",
   PACKAGE_LIST: "product:package:list",
   PACKAGE_UPDATE: "product:package:update",
   LABEL_LIST: "product:label:list",
-  LABEL_UPDATE: "product:label:update"
+  LABEL_UPDATE: "product:label:update",
+  LABEL_PRINT: "product:label:print",
+  BOM_LIST: "product:bom:list",
+  BOM_UPDATE: "product:bom:update"
 } as const;
 
 export type ProductPermissionCode = (typeof PRODUCT_PERMISSIONS)[keyof typeof PRODUCT_PERMISSIONS];

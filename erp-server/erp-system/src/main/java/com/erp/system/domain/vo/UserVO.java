@@ -1,10 +1,11 @@
 package com.erp.system.domain.vo;
 
+import com.erp.common.core.domain.BaseVO;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public class UserVO {
+public class UserVO extends BaseVO {
     private UUID id;
     private String username;
     private String realName;
@@ -15,7 +16,6 @@ public class UserVO {
     private Integer status;
     private List<UUID> roleIds;
     private List<String> roleCodes;
-    private OffsetDateTime createdAt;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -37,6 +37,4 @@ public class UserVO {
     public void setRoleIds(List<UUID> roleIds) { this.roleIds = roleIds; }
     public List<String> getRoleCodes() { return roleCodes; }
     public void setRoleCodes(List<String> roleCodes) { this.roleCodes = roleCodes; }
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

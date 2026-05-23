@@ -3,13 +3,14 @@ package com.erp.product.domain.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.erp.common.core.domain.BaseEntity;
 import com.erp.common.mybatis.type.JsonbStringTypeHandler;
 import com.erp.common.mybatis.type.StringArrayTypeHandler;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @TableName("product")
-public class Product {
+public class Product extends BaseEntity {
     @TableId
     private UUID id;
     private String code;
@@ -23,10 +24,6 @@ public class Product {
     @TableField(typeHandler = JsonbStringTypeHandler.class)
     private String specifications;
     private Integer status;
-    private UUID createdBy;
-    private OffsetDateTime createdAt;
-    private UUID updatedBy;
-    private OffsetDateTime updatedAt;
     private Boolean deleted;
     private OffsetDateTime deletedAt;
 
@@ -108,38 +105,6 @@ public class Product {
 
     public void setStatus(Integer status) {
         this.status = status;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(OffsetDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 
     public Boolean getDeleted() {

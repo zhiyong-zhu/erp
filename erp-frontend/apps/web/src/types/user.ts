@@ -1,4 +1,6 @@
-export interface UserRecord {
+import type { BasePayload, BaseRecord } from "@erp/shared";
+
+export interface UserRecord extends BaseRecord {
   id: string;
   username: string;
   realName: string;
@@ -9,10 +11,9 @@ export interface UserRecord {
   status: number;
   roleIds?: string[];
   roleCodes: string[];
-  createdAt?: string;
 }
 
-export interface UserCreatePayload {
+export interface UserCreatePayload extends BasePayload {
   username: string;
   password: string;
   realName: string;
@@ -22,7 +23,7 @@ export interface UserCreatePayload {
   roleIds: string[];
 }
 
-export interface UserUpdatePayload {
+export interface UserUpdatePayload extends BasePayload {
   realName?: string;
   phone?: string;
   email?: string;

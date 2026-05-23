@@ -14,10 +14,15 @@ public enum ProductPermissionDefinition implements PermissionDefinition {
     PRODUCT_UPDATE(ProductPermissionCodes.PRODUCT_UPDATE, "更新产品", 3, null, null, 122, PRODUCT_LIST.code, true),
     PRODUCT_DETAIL(ProductPermissionCodes.PRODUCT_DETAIL, "查看产品详情", 3, null, null, 123, PRODUCT_LIST.code, true),
     PRODUCT_COST(ProductPermissionCodes.PRODUCT_COST, "查看产品成本字段", 3, null, null, 124, PRODUCT_LIST.code, true),
+    PRODUCT_IMPORT(ProductPermissionCodes.PRODUCT_IMPORT, "导入产品", 3, null, null, 125, PRODUCT_LIST.code, true),
+    PRODUCT_EXPORT(ProductPermissionCodes.PRODUCT_EXPORT, "导出产品", 3, null, null, 126, PRODUCT_LIST.code, true),
     PACKAGE_LIST(ProductPermissionCodes.PACKAGE_LIST, "包装规格", 2, null, null, 130, PRODUCT_ROOT.code, true),
     PACKAGE_UPDATE(ProductPermissionCodes.PACKAGE_UPDATE, "维护包装规格", 3, null, null, 131, PACKAGE_LIST.code, true),
     LABEL_LIST(ProductPermissionCodes.LABEL_LIST, "标签模板", 2, null, null, 140, PRODUCT_ROOT.code, true),
-    LABEL_UPDATE(ProductPermissionCodes.LABEL_UPDATE, "维护标签模板", 3, null, null, 141, LABEL_LIST.code, true);
+    LABEL_UPDATE(ProductPermissionCodes.LABEL_UPDATE, "维护标签模板", 3, null, null, 141, LABEL_LIST.code, true),
+    LABEL_PRINT(ProductPermissionCodes.LABEL_PRINT, "标签打印", 3, null, null, 142, LABEL_LIST.code, true),
+    BOM_LIST(ProductPermissionCodes.BOM_LIST, "BOM", 2, null, null, 150, PRODUCT_ROOT.code, true),
+    BOM_UPDATE(ProductPermissionCodes.BOM_UPDATE, "维护BOM", 3, null, null, 151, BOM_LIST.code, true);
 
     private final String code;
     private final String name;

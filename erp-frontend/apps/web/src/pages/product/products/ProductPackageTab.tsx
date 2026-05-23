@@ -68,8 +68,8 @@ export function ProductPackageTab({ productId, canUpdatePackages, height }: {
       dimensions: serializeDimensions(values.dimensionsDraft)
     };
     const nextPackages = editingPackage
-      ? packages.map((item) => (item.level === editingPackage.level ? { ...editingPackage, ...normalizedPayload } : item))
-      : [...packages, normalizedPayload];
+      ? packages.map((item) => (item.level === editingPackage.level ? { ...pickPackagePayload(editingPackage), ...normalizedPayload } : pickPackagePayload(item)))
+      : [...packages.map((item) => pickPackagePayload(item)), normalizedPayload];
 
     if (hasDuplicateLevel(nextPackages)) {
       message.error("同一产品的包装层级不能重复");
@@ -104,6 +104,13 @@ export function ProductPackageTab({ productId, canUpdatePackages, height }: {
     { title: "装入数量", dataIndex: "quantity", key: "quantity", width: 100 },
     { title: "重量", dataIndex: "weight", key: "weight", width: 100 },
     { title: "条码", dataIndex: "barcode", key: "barcode", width: 140 },
+    {
+      title: "标签模板",
+      dataIndex: "labelTemplateId",
+      key: "labelTemplateId",
+      width: 160,
+      render: (value) => labelTemplates.find((template) => template.id === value)?.name ?? "-"
+    },
     {
       title: "尺寸",
       dataIndex: "dimensions",
@@ -201,6 +208,19 @@ function levelLabel(level: number) {
     return "内盒";
   }
   return "外箱";
+}
+
+function pickPackagePayload(record: ProductPackageRecord): ProductPackageRecord {
+  return {
+    id: record.id,
+    level: record.level,
+    name: record.name,
+    quantity: record.quantity,
+    weight: record.weight,
+    dimensions: record.dimensions,
+    barcode: record.barcode,
+    labelTemplateId: record.labelTemplateId
+  };
 }
 
 function sortPackages(records: ProductPackageRecord[]) {

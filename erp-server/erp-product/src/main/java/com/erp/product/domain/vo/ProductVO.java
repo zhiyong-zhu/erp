@@ -1,11 +1,12 @@
 package com.erp.product.domain.vo;
 
+import com.erp.common.core.domain.BaseVO;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class ProductVO {
+public class ProductVO extends BaseVO {
     private UUID id;
     private String code;
     private String name;
@@ -17,9 +18,9 @@ public class ProductVO {
     private List<String> images = new ArrayList<>();
     private String specifications;
     private Integer status;
+    private String statusName;
     private Integer skuCount;
     private List<ProductSkuVO> skus = new ArrayList<>();
-    private OffsetDateTime createdAt;
 
     public UUID getId() {
         return id;
@@ -109,6 +110,14 @@ public class ProductVO {
         this.status = status;
     }
 
+    public String getStatusName() {
+        return statusName;
+    }
+
+    public void setStatusName(String statusName) {
+        this.statusName = statusName;
+    }
+
     public Integer getSkuCount() {
         return skuCount;
     }
@@ -125,11 +134,4 @@ public class ProductVO {
         this.skus = skus;
     }
 
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
 }

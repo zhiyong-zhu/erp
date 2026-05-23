@@ -7,8 +7,10 @@ import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.product.domain.dto.ProductCreateRequest;
 import com.erp.product.domain.dto.ProductSkuRequest;
+import com.erp.product.domain.dto.ProductStatusFlowRequest;
 import com.erp.product.domain.dto.ProductStatusUpdateRequest;
 import com.erp.product.domain.dto.ProductUpdateRequest;
+import com.erp.product.domain.vo.FileUploadVO;
 import com.erp.product.domain.entity.Product;
 import com.erp.product.domain.entity.ProductCategory;
 import com.erp.product.domain.entity.ProductSku;
@@ -17,15 +19,26 @@ import com.erp.product.domain.vo.ProductVO;
 import com.erp.product.mapper.ProductCategoryMapper;
 import com.erp.product.mapper.ProductMapper;
 import com.erp.product.mapper.ProductSkuMapper;
+import com.erp.product.security.ProductFieldPermissionService;
 import com.erp.product.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import com.erp.common.storage.config.StorageProperties;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -33,15 +46,24 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSkuMapper productSkuMapper;
     private final ProductCategoryMapper productCategoryMapper;
     private final ObjectMapper objectMapper;
+    private final ProductFieldPermissionService productFieldPermissionService;
+    private final S3Client s3Client;
+    private final StorageProperties storageProperties;
 
     public ProductServiceImpl(ProductMapper productMapper,
                               ProductSkuMapper productSkuMapper,
                               ProductCategoryMapper productCategoryMapper,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              ProductFieldPermissionService productFieldPermissionService,
+                              S3Client s3Client,
+                              StorageProperties storageProperties) {
         this.productMapper = productMapper;
         this.productSkuMapper = productSkuMapper;
         this.productCategoryMapper = productCategoryMapper;
         this.objectMapper = objectMapper;
+        this.productFieldPermissionService = productFieldPermissionService;
+        this.s3Client = s3Client;
+        this.storageProperties = storageProperties;
     }
 
     @Override
@@ -130,6 +152,122 @@ public class ProductServiceImpl implements ProductService {
         productMapper.updateById(product);
     }
 
+    @Override
+    public ProductVO changeStatusFlow(UUID id, ProductStatusFlowRequest request) {
+        Product product = getProduct(id);
+        int nextStatus = switch (request.getAction()) {
+            case "submit" -> 1;
+            case "disable" -> 2;
+            case "enable" -> 1;
+            case "reject" -> 0;
+            default -> throw new BizException(10004, "不支持的状态操作");
+        };
+        product.setStatus(nextStatus);
+        product.setUpdatedBy(SecurityUtils.getUserId());
+        product.setUpdatedAt(OffsetDateTime.now());
+        productMapper.updateById(product);
+        return toProductVO(product, true);
+    }
+
+    @Override
+    public FileUploadVO uploadImage(MultipartFile file) {
+        try {
+            String filename = System.currentTimeMillis() + "-" + file.getOriginalFilename();
+            String key = "product/images/" + filename;
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(storageProperties.getBucket())
+                            .key(key)
+                            .contentType(file.getContentType())
+                            .build(),
+                    RequestBody.fromBytes(file.getBytes())
+            );
+            FileUploadVO vo = new FileUploadVO();
+            vo.setFilename(filename);
+            vo.setUrl(storageProperties.getEndpoint() + "/" + storageProperties.getBucket() + "/" + key);
+            return vo;
+        } catch (Exception ex) {
+            throw new BizException(10006, "图片上传失败");
+        }
+    }
+
+    @Override
+    public ByteArrayInputStream exportProducts() {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("products");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("产品编码");
+            header.createCell(1).setCellValue("产品名称");
+            header.createCell(2).setCellValue("品牌");
+            header.createCell(3).setCellValue("单位");
+            header.createCell(4).setCellValue("状态");
+
+            List<Product> products = productMapper.selectList(new LambdaQueryWrapper<Product>()
+                    .eq(Product::getDeleted, false)
+                    .orderByDesc(Product::getCreatedAt));
+            int rowIndex = 1;
+            for (Product product : products) {
+                Row row = sheet.createRow(rowIndex++);
+                row.createCell(0).setCellValue(product.getCode());
+                row.createCell(1).setCellValue(product.getName());
+                row.createCell(2).setCellValue(product.getBrand() == null ? "" : product.getBrand());
+                row.createCell(3).setCellValue(product.getUnit());
+                row.createCell(4).setCellValue(product.getStatus() == null ? 0 : product.getStatus());
+            }
+            workbook.write(outputStream);
+            return new ByteArrayInputStream(outputStream.toByteArray());
+        } catch (Exception ex) {
+            throw new BizException(10006, "产品导出失败");
+        }
+    }
+
+    @Override
+    public void importProducts(MultipartFile file) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null || row.getCell(0) == null) {
+                    continue;
+                }
+                String code = row.getCell(0).getStringCellValue();
+                String name = row.getCell(1) == null ? "" : row.getCell(1).getStringCellValue();
+                String brand = row.getCell(2) == null ? null : row.getCell(2).getStringCellValue();
+                String unit = row.getCell(3) == null ? "个" : row.getCell(3).getStringCellValue();
+                if (code == null || code.isBlank() || name.isBlank()) {
+                    continue;
+                }
+                Product existing = productMapper.selectOne(new LambdaQueryWrapper<Product>()
+                        .eq(Product::getCode, code)
+                        .eq(Product::getDeleted, false));
+                if (existing != null) {
+                    existing.setName(name);
+                    existing.setBrand(normalizeText(brand));
+                    existing.setUnit(unit);
+                    existing.setUpdatedBy(SecurityUtils.getUserId());
+                    existing.setUpdatedAt(OffsetDateTime.now());
+                    productMapper.updateById(existing);
+                } else {
+                    Product product = new Product();
+                    product.setId(UUID.randomUUID());
+                    product.setCode(code);
+                    product.setName(name);
+                    product.setBrand(normalizeText(brand));
+                    product.setUnit(unit);
+                    product.setStatus(0);
+                    product.setCreatedBy(SecurityUtils.getUserId());
+                    product.setCreatedAt(OffsetDateTime.now());
+                    product.setUpdatedBy(SecurityUtils.getUserId());
+                    product.setUpdatedAt(OffsetDateTime.now());
+                    product.setDeleted(false);
+                    productMapper.insert(product);
+                }
+            }
+        } catch (Exception ex) {
+            throw new BizException(10006, "产品导入失败");
+        }
+    }
+
     private Product getProduct(UUID id) {
         Product product = productMapper.selectById(id);
         if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
@@ -163,7 +301,9 @@ public class ProductServiceImpl implements ProductService {
             sku.setAttributes(normalizeRequiredJson(request.getAttributes(), "SKU属性"));
             sku.setBarcode(normalizeText(request.getBarcode()));
             sku.setPrice(request.getPrice());
-            sku.setCostPrice(request.getCostPrice());
+            if (productFieldPermissionService.canViewCostPrice()) {
+                sku.setCostPrice(request.getCostPrice());
+            }
             sku.setWeight(request.getWeight());
             sku.setStatus(request.getStatus() == null ? 1 : request.getStatus());
             sku.setCreatedAt(OffsetDateTime.now());
@@ -245,7 +385,9 @@ public class ProductServiceImpl implements ProductService {
         vo.setAttributes(sku.getAttributes());
         vo.setBarcode(sku.getBarcode());
         vo.setPrice(sku.getPrice());
-        vo.setCostPrice(sku.getCostPrice());
+        if (productFieldPermissionService.canViewCostPrice()) {
+            vo.setCostPrice(sku.getCostPrice());
+        }
         vo.setWeight(sku.getWeight());
         vo.setStatus(sku.getStatus());
         vo.setCreatedAt(sku.getCreatedAt());

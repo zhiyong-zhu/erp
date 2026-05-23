@@ -1,12 +1,16 @@
 import { http } from "./http";
 import type { PageQuery, PageResult } from "../types/page";
 import type {
+  LabelPrintPayload,
+  LabelPrintResult,
   LabelTemplateRecord,
+  ProductBomRecord,
   ProductCategoryPayload,
   ProductCategoryRecord,
   ProductPackageRecord,
   ProductPayload,
   ProductRecord,
+  ProductStatusFlowPayload,
   ProductUpdatePayload
 } from "../types/product";
 
@@ -56,6 +60,33 @@ export async function updateProductStatus(id: string, status: number): Promise<v
   await http.put(`/product/products/${id}/status`, { status });
 }
 
+export async function changeProductStatusFlow(id: string, payload: ProductStatusFlowPayload): Promise<ProductRecord> {
+  const response = await http.post<ApiResponse<ProductRecord>>(`/product/products/${id}/flow`, payload);
+  return response.data.data;
+}
+
+export async function uploadProductImage(file: File): Promise<{ url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await http.post<ApiResponse<{ url: string; filename: string }>>("/product/products/upload-image", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return response.data.data;
+}
+
+export async function exportProductsFile(): Promise<Blob> {
+  const response = await http.get("/product/products/export", { responseType: "blob" });
+  return response.data;
+}
+
+export async function importProductsFile(file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append("file", file);
+  await http.post("/product/products/import", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+}
+
 export async function fetchProductPackages(productId: string): Promise<ProductPackageRecord[]> {
   const response = await http.get<ApiResponse<ProductPackageRecord[]>>(`/product/products/${productId}/packages`);
   return response.data.data;
@@ -73,5 +104,20 @@ export async function fetchLabelTemplates(): Promise<LabelTemplateRecord[]> {
 
 export async function saveLabelTemplate(payload: LabelTemplateRecord): Promise<LabelTemplateRecord> {
   const response = await http.post<ApiResponse<LabelTemplateRecord>>("/product/label-templates", payload);
+  return response.data.data;
+}
+
+export async function fetchProductBom(productId: string): Promise<ProductBomRecord> {
+  const response = await http.get<ApiResponse<ProductBomRecord>>(`/product/products/${productId}/bom`);
+  return response.data.data;
+}
+
+export async function saveProductBom(productId: string, payload: ProductBomRecord): Promise<ProductBomRecord> {
+  const response = await http.post<ApiResponse<ProductBomRecord>>(`/product/products/${productId}/bom`, payload);
+  return response.data.data;
+}
+
+export async function previewLabelPrint(payload: LabelPrintPayload): Promise<LabelPrintResult> {
+  const response = await http.post<ApiResponse<LabelPrintResult>>("/product/labels/preview", payload);
   return response.data.data;
 }

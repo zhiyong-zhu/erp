@@ -1,15 +1,16 @@
-export interface ProductCategoryRecord {
+import type { BasePayload, BaseRecord } from "@erp/shared";
+
+export interface ProductCategoryRecord extends BaseRecord {
   id: string;
   parentId?: string | null;
   name: string;
   code?: string | null;
   sortOrder: number;
   status: number;
-  createdAt?: string;
   children?: ProductCategoryRecord[];
 }
 
-export interface ProductCategoryPayload {
+export interface ProductCategoryPayload extends BasePayload {
   parentId?: string | null;
   name: string;
   code?: string;
@@ -17,7 +18,7 @@ export interface ProductCategoryPayload {
   status?: number;
 }
 
-export interface ProductSkuRecord {
+export interface ProductSkuRecord extends BaseRecord {
   rowId?: string;
   id?: string;
   skuCode: string;
@@ -29,7 +30,7 @@ export interface ProductSkuRecord {
   status?: number;
 }
 
-export interface ProductRecord {
+export interface ProductRecord extends BaseRecord {
   id: string;
   code: string;
   name: string;
@@ -43,10 +44,9 @@ export interface ProductRecord {
   status: number;
   skuCount?: number | null;
   skus?: ProductSkuRecord[];
-  createdAt?: string;
 }
 
-export interface ProductPackageRecord {
+export interface ProductPackageRecord extends BaseRecord {
   id?: string;
   level: number;
   name: string;
@@ -61,21 +61,60 @@ export interface ProductPackageRecord {
   };
   barcode?: string | null;
   labelTemplateId?: string | null;
-  createdAt?: string;
 }
 
-export interface LabelTemplateRecord {
+export interface ProductBomItemRecord extends BaseRecord {
+  rowId?: string;
+  id?: string;
+  materialId: string;
+  materialType?: number;
+  quantity: number;
+  unit?: string | null;
+  lossRate?: number | null;
+  remark?: string | null;
+  sortOrder?: number | null;
+}
+
+export interface ProductBomRecord extends BaseRecord {
+  id?: string;
+  version?: string | null;
+  status?: number;
+  effectiveDate?: string | null;
+  items?: ProductBomItemRecord[];
+}
+
+export interface LabelTemplateRecord extends BaseRecord {
   id?: string;
   name: string;
   widthMm: number;
   heightMm: number;
   templateConfig: string;
+  templateConfigDraft?: string;
   previewImage?: string | null;
   status?: number;
-  createdAt?: string;
 }
 
-export interface ProductPayload {
+export interface LabelPrintItemPayload {
+  skuId: string;
+  packageLevel: number;
+  labelTemplateId: string;
+  quantity: number;
+}
+
+export interface LabelPrintPayload {
+  items: LabelPrintItemPayload[];
+  printerId?: string;
+  printMode: string;
+}
+
+export interface LabelPrintResult {
+  pdfUrl: string;
+  totalCount: number;
+  summary: string;
+  previewHtml?: string;
+}
+
+export interface ProductPayload extends BasePayload {
   code: string;
   name: string;
   categoryId?: string | null;
@@ -88,7 +127,7 @@ export interface ProductPayload {
   skus: ProductSkuRecord[];
 }
 
-export interface ProductUpdatePayload {
+export interface ProductUpdatePayload extends BasePayload {
   name: string;
   categoryId?: string | null;
   brand?: string;
@@ -98,4 +137,8 @@ export interface ProductUpdatePayload {
   specifications?: string;
   status?: number;
   skus: ProductSkuRecord[];
+}
+
+export interface ProductStatusFlowPayload {
+  action: "submit" | "enable" | "disable" | "reject";
 }

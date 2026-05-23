@@ -1,12 +1,14 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { ModalForm, ProFormDigit, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
-import { App, Button, Card, Descriptions, Empty, Input, Popconfirm, Space, Switch, Table, Tabs, Tag, Typography } from "antd";
+import { App, Button, Card, Descriptions, Empty, Input, Popconfirm, Space, Switch, Table, Tabs, Tag, Typography, Upload } from "antd";
 import { PRODUCT_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { createProduct, fetchProductCategoryTree, fetchProductDetail, fetchProducts, updateProduct, updateProductStatus } from "../../../api/product";
+import { changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct, uploadProductImage } from "../../../api/product";
+import { ProductBomTab } from "./ProductBomTab";
 import { ProductPackageTab } from "./ProductPackageTab";
 import { ProductLabelTemplateTab } from "./ProductLabelTemplateTab";
+import { ProductLabelPrintTab } from "./ProductLabelPrintTab";
 import { hasPermission } from "../../../store/auth";
 import type { ProductCategoryRecord, ProductPayload, ProductRecord, ProductSkuRecord, ProductUpdatePayload } from "../../../types/product";
 
@@ -52,10 +54,15 @@ export function ProductManagementPage() {
   const canUpdate = hasPermission(PRODUCT_PERMISSIONS.PRODUCT_UPDATE);
   const canViewDetail = hasPermission(PRODUCT_PERMISSIONS.PRODUCT_DETAIL);
   const canViewCost = hasPermission(PRODUCT_PERMISSIONS.PRODUCT_COST);
+  const canImport = hasPermission(PRODUCT_PERMISSIONS.PRODUCT_IMPORT);
+  const canExport = hasPermission(PRODUCT_PERMISSIONS.PRODUCT_EXPORT);
   const canViewPackages = hasPermission(PRODUCT_PERMISSIONS.PACKAGE_LIST);
   const canUpdatePackages = hasPermission(PRODUCT_PERMISSIONS.PACKAGE_UPDATE);
   const canViewLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_LIST);
   const canUpdateLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_UPDATE);
+  const canViewBom = hasPermission(PRODUCT_PERMISSIONS.BOM_LIST);
+  const canUpdateBom = hasPermission(PRODUCT_PERMISSIONS.BOM_UPDATE);
+  const canPrintLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_PRINT);
 
   const categoryOptions = useMemo(
     () => flattenCategories(categories).map((category) => ({ label: category.name, value: category.id })),
@@ -144,12 +151,48 @@ export function ProductManagementPage() {
 
   async function handleToggleStatus(product: ProductRecord, checked: boolean) {
     try {
-      await updateProductStatus(product.id, checked ? 1 : 2);
+      await changeProductStatusFlow(product.id, { action: checked ? "enable" : "disable" });
       message.success(checked ? "产品已上架" : "产品已停用");
       await loadProducts();
     } catch (err: any) {
       message.error(err?.response?.data?.message ?? err?.message ?? "状态更新失败");
     }
+  }
+
+  async function handleStatusAction(product: ProductRecord, action: "submit" | "reject") {
+    try {
+      await changeProductStatusFlow(product.id, { action });
+      message.success(action === "submit" ? "产品已提交上架" : "产品已驳回为草稿");
+      await loadProducts();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "状态流转失败");
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const blob = await exportProductsFile();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "products.xlsx";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      message.success("产品导出成功");
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "产品导出失败");
+    }
+  }
+
+  async function handleImport(file: File) {
+    try {
+      await importProductsFile(file);
+      message.success("产品导入成功");
+      await loadProducts();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "产品导入失败");
+    }
+    return false;
   }
 
   const columns: ColumnsType<ProductRecord> = [
@@ -163,7 +206,7 @@ export function ProductManagementPage() {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="在售" unCheckedChildren="停用" disabled={!canUpdate} onChange={(checked) => void handleToggleStatus(record, checked)} />
+      render: (_, record) => <Switch checked={record.status === 1} checkedChildren="在售" unCheckedChildren="停用" disabled={!canUpdate} onChange={(checked: boolean) => void handleToggleStatus(record, checked)} />
     },
     {
       title: "操作",
@@ -172,6 +215,8 @@ export function ProductManagementPage() {
         <Space size="small">
           <Button type="link" disabled={!canViewDetail} onClick={() => void handleOpenView(record)}>查看</Button>
           <Button type="link" disabled={!canUpdate} onClick={() => void handleOpenEdit(record)}>编辑</Button>
+          {record.status === 0 ? <Button type="link" disabled={!canUpdate} onClick={() => void handleStatusAction(record, "submit")}>提交上架</Button> : null}
+          {record.status === 1 ? <Button type="link" disabled={!canUpdate} onClick={() => void handleStatusAction(record, "reject")}>驳回草稿</Button> : null}
         </Space>
       )
     }
@@ -202,6 +247,10 @@ export function ProductManagementPage() {
             }}
             style={{ width: 240 }}
           />
+          <Upload beforeUpload={handleImport} showUploadList={false} disabled={!canImport}>
+            <Button disabled={!canImport}>导入产品</Button>
+          </Upload>
+          <Button disabled={!canExport} onClick={() => void handleExport()}>导出产品</Button>
           <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>新建产品</Button>
         </Space>
       </div>
@@ -246,6 +295,9 @@ export function ProductManagementPage() {
               canUpdatePackages={canUpdatePackages}
               canViewLabels={canViewLabels}
               canUpdateLabels={canUpdateLabels}
+              canViewBom={canViewBom}
+              canUpdateBom={canUpdateBom}
+              canPrintLabels={canPrintLabels}
               onTabChange={setDetailTab}
             />
           </div>
@@ -294,7 +346,7 @@ export function ProductManagementPage() {
   );
 }
 
-function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, canUpdatePackages, canViewLabels, canUpdateLabels, detailBodyHeight, onTabChange }: {
+function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, canUpdatePackages, canViewLabels, canUpdateLabels, canViewBom, canUpdateBom, canPrintLabels, detailBodyHeight, onTabChange }: {
   product: ProductRecord | null;
   activeTab: string;
   canViewCost: boolean;
@@ -303,6 +355,9 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
   canUpdatePackages: boolean;
   canViewLabels: boolean;
   canUpdateLabels: boolean;
+  canViewBom: boolean;
+  canUpdateBom: boolean;
+  canPrintLabels: boolean;
   onTabChange: (key: string) => void;
 }) {
   const skuColumns: ColumnsType<ProductSkuRecord> = [
@@ -383,7 +438,9 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
             {
               key: "bom",
               label: "BOM",
-              children: <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="BOM模块待接入" /></div>
+              children: canViewBom
+                ? <ProductBomTab productId={product.id} canUpdate={canUpdateBom} height={detailBodyHeight} />
+                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无BOM查看权限" /></div>
             },
             {
               key: "label",
@@ -391,6 +448,13 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
               children: canViewLabels
                 ? <ProductLabelTemplateTab height={detailBodyHeight} canUpdate={canUpdateLabels} />
                 : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无标签模板查看权限" /></div>
+            },
+            {
+              key: "print",
+              label: "标签打印",
+              children: canPrintLabels
+                ? <ProductLabelPrintTab product={product} height={detailBodyHeight} canPrint={canPrintLabels} />
+                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无标签打印权限" /></div>
             }
           ]}
         />
@@ -417,6 +481,8 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
   const [skuModalOpen, setSkuModalOpen] = useState(false);
   const [editingSkuRowId, setEditingSkuRowId] = useState<string | null>(null);
   const [skuAttributeRows, setSkuAttributeRows] = useState<EditableAttributeRow[]>([]);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
@@ -434,6 +500,7 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
     })) ?? [];
     setSkuRows(nextRows);
     setSpecRows(parseSpecifications(initialValues?.specifications));
+    setImageUrls((initialValues?.images as string[] | undefined) ?? []);
   }, [initialValues?.skus, initialValues?.specifications, open]);
 
   const editingSku = editingSkuRowId ? skuRows.find((row) => row.rowId === editingSkuRowId) ?? null : null;
@@ -499,10 +566,25 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
 
     const payload = {
       ...values,
+      images: imageUrls,
       specifications: serializeSpecifications(specRows),
       skus: normalizedSkus
     };
     return onFinish(payload);
+  }
+
+  async function handleImageUpload(file: File) {
+    setImageUploading(true);
+    try {
+      const uploaded = await uploadProductImage(file);
+      setImageUrls((urls) => [...urls, uploaded.url]);
+      message.success("图片上传成功");
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "图片上传失败");
+    } finally {
+      setImageUploading(false);
+    }
+    return false;
   }
 
   async function handleSaveSku(values: EditableSkuRow) {
@@ -569,6 +651,28 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
         <ProFormSelect name="categoryId" label="产品分类" options={categoryOptions} />
         <ProFormText name="brand" label="品牌" />
         <ProFormText name="unit" label="单位" rules={[{ required: true }]} />
+        <Card
+          size="small"
+          title="产品图片"
+          className="product-spec-card"
+          extra={
+            <Upload beforeUpload={handleImageUpload} showUploadList={false} multiple>
+              <Button loading={imageUploading}>上传图片</Button>
+            </Upload>
+          }
+        >
+          {imageUrls.length > 0 ? (
+            <Space wrap>
+              {imageUrls.map((url) => (
+                <Tag key={url} closable onClose={() => setImageUrls((urls) => urls.filter((item) => item !== url))}>
+                  {url}
+                </Tag>
+              ))}
+            </Space>
+          ) : (
+            <Empty description="暂无图片" />
+          )}
+        </Card>
         <ProFormTextArea name="description" label="描述" fieldProps={{ autoSize: { minRows: 3, maxRows: 5 } }} />
 
         <Card
