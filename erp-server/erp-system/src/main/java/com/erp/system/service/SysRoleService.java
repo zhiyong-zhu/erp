@@ -1,10 +1,10 @@
 package com.erp.system.service;
 
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.dto.RoleCreateRequest;
 import com.erp.system.domain.dto.RolePermissionUpdateRequest;
 import com.erp.system.domain.dto.RoleUpdateRequest;
 import com.erp.system.domain.dto.StatusUpdateRequest;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.PermissionVO;
 import com.erp.system.domain.vo.RoleVO;
 import java.util.List;

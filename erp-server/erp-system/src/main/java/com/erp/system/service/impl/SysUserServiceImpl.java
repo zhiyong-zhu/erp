@@ -2,6 +2,7 @@ package com.erp.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.system.domain.dto.UserCreateRequest;
@@ -16,7 +17,6 @@ import com.erp.system.security.DataScopeContext;
 import com.erp.system.security.DataScopeLevel;
 import com.erp.system.security.DataScopeService;
 import com.erp.system.security.FieldPermissionService;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.UserFieldPermissionVO;
 import com.erp.system.domain.vo.UserVO;
 import com.erp.system.mapper.SysDepartmentMapper;

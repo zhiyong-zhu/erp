@@ -1,8 +1,8 @@
 package com.erp.system.service;
 
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.entity.SysOperationLog;
 import com.erp.system.domain.vo.OperationLogVO;
-import com.erp.system.domain.vo.PageVO;
 
 public interface SysOperationLogService {
     void save(SysOperationLog operationLog);

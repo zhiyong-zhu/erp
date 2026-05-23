@@ -2,6 +2,7 @@ package com.erp.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
 import com.erp.system.domain.dto.DictDataCreateRequest;
 import com.erp.system.domain.dto.DictDataUpdateRequest;
@@ -11,7 +12,6 @@ import com.erp.system.domain.entity.SysDictData;
 import com.erp.system.domain.entity.SysDictType;
 import com.erp.system.domain.vo.DictDataVO;
 import com.erp.system.domain.vo.DictTypeVO;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.mapper.SysDictDataMapper;
 import com.erp.system.mapper.SysDictTypeMapper;
 import com.erp.system.service.SysDictService;

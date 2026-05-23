@@ -1,16 +1,18 @@
 import { App as AntApp } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import { SYSTEM_PERMISSIONS } from "@erp/shared";
 import { fetchUserInfo } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoginPage } from "../pages/login/LoginPage";
+import { ProductCategoryPage } from "../pages/product/categories/ProductCategoryPage";
+import { ProductManagementPage } from "../pages/product/products/ProductManagementPage";
 import { DepartmentManagementPage } from "../pages/system/departments/DepartmentManagementPage";
 import { DictManagementPage } from "../pages/system/dicts/DictManagementPage";
 import { OperationLogPage } from "../pages/system/logs/OperationLogPage";
 import { RoleManagementPage } from "../pages/system/roles/RoleManagementPage";
 import { UserManagementPage } from "../pages/system/users/UserManagementPage";
+import { PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { clearAuth, getAuthState, saveUser, subscribeAuth } from "../store/auth";
 
 function resolveDefaultRoute() {
@@ -29,6 +31,12 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(SYSTEM_PERMISSIONS.LOG_LIST)) {
     return "/system/logs";
+  }
+  if (permissions.includes(PRODUCT_PERMISSIONS.PRODUCT_LIST)) {
+    return "/product/products";
+  }
+  if (permissions.includes(PRODUCT_PERMISSIONS.CATEGORY_LIST)) {
+    return "/product/categories";
   }
   return "/login";
 }
@@ -87,6 +95,8 @@ export function AppRouter() {
             <Route path="/system/roles" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.ROLE_LIST}><RoleManagementPage /></PermissionGuard>} />
             <Route path="/system/dict" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.DICT_LIST}><DictManagementPage /></PermissionGuard>} />
             <Route path="/system/logs" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.LOG_LIST}><OperationLogPage /></PermissionGuard>} />
+            <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
+            <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />
           </Route>
         </Routes>
       </Router>

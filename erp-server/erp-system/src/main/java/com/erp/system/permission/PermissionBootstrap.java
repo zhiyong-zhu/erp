@@ -1,6 +1,8 @@
 package com.erp.system.permission;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.erp.common.core.permission.PermissionDefinition;
+import com.erp.common.core.permission.PermissionRegistry;
 import com.erp.system.domain.entity.SysPermission;
 import com.erp.system.domain.entity.SysRole;
 import com.erp.system.domain.entity.SysRolePermission;

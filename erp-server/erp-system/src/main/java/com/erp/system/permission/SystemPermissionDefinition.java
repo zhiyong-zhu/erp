@@ -1,5 +1,7 @@
 package com.erp.system.permission;
 
+import com.erp.common.core.permission.PermissionDefinition;
+
 public enum SystemPermissionDefinition implements PermissionDefinition {
     SYSTEM_ROOT(SystemPermissionCodes.SYSTEM, "系统管理", 1, "/system", "setting", 0, null, true),
 

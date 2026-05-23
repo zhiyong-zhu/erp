@@ -1,8 +1,8 @@
 package com.erp.system.controller;
 
 import com.erp.common.core.domain.R;
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.vo.OperationLogVO;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.permission.SystemPermissionCodes;
 import com.erp.system.service.SysOperationLogService;
 import org.springframework.security.access.prepost.PreAuthorize;

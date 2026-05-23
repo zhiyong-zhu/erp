@@ -23,3 +23,23 @@ export const SYSTEM_PERMISSIONS = {
 } as const;
 
 export type SystemPermissionCode = (typeof SYSTEM_PERMISSIONS)[keyof typeof SYSTEM_PERMISSIONS];
+
+export const PRODUCT_PERMISSIONS = {
+  ROOT: "product",
+
+  CATEGORY_LIST: "product:category:list",
+  CATEGORY_CREATE: "product:category:create",
+  CATEGORY_UPDATE: "product:category:update",
+
+  PRODUCT_LIST: "product:list",
+  PRODUCT_CREATE: "product:create",
+  PRODUCT_UPDATE: "product:update",
+  PRODUCT_DETAIL: "product:detail",
+  PRODUCT_COST: "product:cost",
+  PACKAGE_LIST: "product:package:list",
+  PACKAGE_UPDATE: "product:package:update",
+  LABEL_LIST: "product:label:list",
+  LABEL_UPDATE: "product:label:update"
+} as const;
+
+export type ProductPermissionCode = (typeof PRODUCT_PERMISSIONS)[keyof typeof PRODUCT_PERMISSIONS];

@@ -1,13 +1,13 @@
 package com.erp.system.controller;
 
 import com.erp.common.core.domain.R;
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.dto.DictDataCreateRequest;
 import com.erp.system.domain.dto.DictDataUpdateRequest;
 import com.erp.system.domain.dto.DictTypeCreateRequest;
 import com.erp.system.domain.dto.DictTypeUpdateRequest;
 import com.erp.system.domain.vo.DictDataVO;
 import com.erp.system.domain.vo.DictTypeVO;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.logging.OperationLog;
 import com.erp.system.permission.SystemPermissionCodes;
 import com.erp.system.service.SysDictService;

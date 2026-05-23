@@ -1,4 +1,4 @@
-package com.erp.system.permission;
+package com.erp.common.core.permission;
 
 public interface PermissionDefinition {
     String getCode();

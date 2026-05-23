@@ -1,11 +1,11 @@
 package com.erp.system.service;
 
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.dto.UserCreateRequest;
 import com.erp.system.domain.dto.UserStatusUpdateRequest;
 import com.erp.system.domain.dto.UserUpdateRequest;
 import com.erp.system.domain.entity.SysUser;
 import com.erp.system.security.DataScopeContext;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.UserFieldPermissionVO;
 import com.erp.system.domain.vo.UserVO;
 import java.util.List;

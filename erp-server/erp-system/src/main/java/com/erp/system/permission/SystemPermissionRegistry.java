@@ -1,5 +1,7 @@
 package com.erp.system.permission;
 
+import com.erp.common.core.permission.PermissionDefinition;
+import com.erp.common.core.permission.PermissionRegistry;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Component;

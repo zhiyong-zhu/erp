@@ -1,5 +1,7 @@
 # 全渠道 ERP 项目
 
+> 智能体开发入口：优先按顺序阅读 [AGENT_RULES.md](AGENT_RULES.md) → [dev-design.md](dev-design.md) → [prd.md](prd.md) → [tech-architecture.md](tech-architecture.md)。
+
 本仓库包含以下内容：
 
 - `erp-server`：Spring Boot 3 + Maven 多模块后端

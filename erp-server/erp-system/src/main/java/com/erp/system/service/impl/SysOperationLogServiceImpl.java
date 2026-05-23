@@ -2,9 +2,9 @@ package com.erp.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.entity.SysOperationLog;
 import com.erp.system.domain.vo.OperationLogVO;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.mapper.SysOperationLogMapper;
 import com.erp.system.service.SysOperationLogService;
 import java.util.List;

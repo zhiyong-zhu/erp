@@ -1,5 +1,8 @@
 # 全渠道ERP系统 详细开发设计文档
 
+> 智能体阅读顺序：`AGENT_RULES.md` → `dev-design.md` → `prd.md` → `tech-architecture.md`。  
+> `AGENT_RULES.md` 提供短规则与禁止项，`dev-design.md` 提供详细开发设计与接口/表结构依据。
+
 > 版本：v1.1  
 > 更新日期：2026-05-22  
 > 文档状态：修订稿
@@ -4317,6 +4320,8 @@ resources/processes/
 
 ## 五、开发规范
 
+> 针对 Codex / 其他智能体的高优先级执行规则，请优先阅读仓库根目录 `AGENT_RULES.md`。本章保留详细规范，`AGENT_RULES.md` 保留短规则与禁止项。
+
 ### 5.1 代码规范
 
 **后端（Java）：**
@@ -4382,6 +4387,80 @@ test(sales): 添加订单创建单元测试
 - AI 生成的代码必须人工 Code Review
 - 涉及安全（认证、权限、加密）的代码需重点审查
 - 生成的 SQL 需在测试环境验证性能
+
+#### 5.4.1 已验证问题与强制约束（系统管理 / 产品管理）
+
+以下约束来自当前项目在系统管理模块与产品管理模块落地过程中的真实问题，后续 Codex / 其它智能体必须优先遵守：
+
+**A. 权限维护规则**
+- `sys_permission` / `sys_role_permission` 的新增、层级调整、默认管理员授权，不再通过 Flyway 的 `INSERT/UPDATE/DELETE` SQL 维护。
+- 新增系统权限时，必须优先修改：
+  - `erp-server/erp-system/src/main/java/com/erp/system/permission/SystemPermissionCodes.java`
+  - `erp-server/erp-system/src/main/java/com/erp/system/permission/SystemPermissionDefinition.java`
+- 新增产品权限时，必须优先修改：
+  - `erp-server/erp-product/src/main/java/com/erp/product/permission/ProductPermissionCodes.java`
+  - `erp-server/erp-product/src/main/java/com/erp/product/permission/ProductPermissionDefinition.java`
+- 权限写入数据库由启动同步器完成，不允许再次为权限种子单独新增 Flyway DML。
+- 前端权限码不得散落字符串字面量，必须优先从共享常量引用：
+  - `erp-frontend/packages/shared/src/constants/permissions.ts`
+- 后端 `@PreAuthorize` 不得手写字符串，必须优先引用常量类，避免权限码漂移。
+- 启用中的系统权限必须能在代码定义中找到，否则启动应直接失败。
+
+**B. Flyway 使用规则**
+- Flyway 只负责数据库结构演进、必要的基础业务种子和历史数据迁移。
+- 在当前开发阶段，如确认切换到“代码定义 + 启动同步”模式，可删除仍未投入稳定环境的权限 DML 迁移文件，但不得删除建表、索引、外键、分区等结构迁移。
+- 任何 AI 修改 Flyway 时，必须区分“结构迁移”和“权限数据迁移”，不得混改。
+
+**C. PostgreSQL 类型映射规则**
+- PostgreSQL `jsonb` / `text[]` 字段不能直接按普通 `String` / `String[]` 想当然落库，必须显式配置 type handler。
+- 当前项目已验证需要为下列场景配置自定义 handler：
+  - `jsonb`：产品规格、SKU属性、包装尺寸、标签模板配置
+  - `text[]`：产品图片
+- 如新增类似字段，优先复用：
+  - `JsonbStringTypeHandler`
+  - `StringArrayTypeHandler`
+- 实体字段若使用上述类型，必须在 `@TableField(typeHandler = ...)` 上显式声明，不得依赖隐式转换。
+
+**D. 产品模块 JSON 输入规则**
+- 后端不得直接接受“任意字符串”写入 `jsonb` 字段，必须先做 JSON 合法性校验。
+- 空字符串写入 `jsonb` 字段前必须转 `null`，否则会触发数据库错误。
+- 产品更新时不得把 `createdBy` / `createdAt` / `code` 等不该更新的字段通过 `updateById` 一并回写。
+- 前端产品表单不允许继续让用户手输 JSON 作为唯一交互方式：
+  - `specifications` 必须优先使用结构化编辑器
+  - `SKU.attributes` 必须优先使用键值对编辑器
+  - 最终提交前再统一序列化成 JSON
+
+**E. 产品页面交互规则**
+- 多 SKU 编辑不得使用无约束的大块嵌套表单堆叠，必须优先使用“独立表格 + 单条弹窗编辑”结构，避免布局错乱。
+- 规格定义变更后，如支持自动生成 SKU，默认策略必须是“补全缺失组合，不覆盖已有 SKU”；覆盖重建必须二次确认。
+- 产品详情区优先采用“上方列表 + 下方详情 tabs”结构，便于继续扩展包装规格、BOM、标签模板等子模块。
+- 上下分区需固定高度并各自内部滚动，禁止列表数量增多时撑长整页。
+
+**F. 包装规格规则**
+- 同一产品的包装层级 `level` 只允许 `1/2/3` 各一条，前后端都必须校验。
+- 包装尺寸输入不允许只提供 JSON 文本框，必须优先提供结构化的长/宽/高/单位字段，再序列化。
+- 包装规格 tab 必须展示层级换算摘要，例如：
+  - `1内盒 = N单品`
+  - `1外箱 = N内盒 = M单品`
+- 包装规格若可关联标签模板，前端拉取模板失败时不得静默吞错，必须向用户显示明确错误。
+
+**G. 异常与日志规则**
+- 全局异常处理器不能只返回 `10006 服务器内部错误`，同时必须记录真实异常日志，便于排查。
+- 前端调用链如发生加载失败，不得默认吞掉异常并展示空列表，至少应给出明确 `message.error(...)`。
+- 对 AI 来说，若出现“前端显示空数据但无报错”或“后端仅返回10006”两类现象，必须优先补真实日志与错误透出，而不是继续猜测业务逻辑。
+
+**H. 模块依赖规则**
+- 跨模块复用的 VO / 权限接口 / 通用定义，不得放在业务模块（如 `erp-system`）中被其他业务模块反向依赖。
+- 已验证适合下沉到公共层的内容包括：
+  - `PageVO`
+  - `PermissionDefinition`
+  - `PermissionRegistry`
+- 如后续新增可复用的跨模块基础类型，应优先放在 `erp-common-core`，避免形成业务模块环依赖。
+
+**I. 前后端一致性规则**
+- 后端新增权限码、前端新增权限判断、共享层权限常量，三处必须同时更新。
+- 后端新增 tab / 子模块接口时，前端详情区应优先采用占位 tab → 真实功能逐步替换的方式，不要一次性设计过深。
+- 后端提供的包装规格、标签模板等列表接口，前端应优先按“列表 / 创建 / 编辑 / 删除”闭环落地，再继续做设计器、打印器等 P1/P2 能力。
 
 ### 5.5 前端路由与权限映射
 

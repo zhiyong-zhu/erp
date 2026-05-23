@@ -1,12 +1,12 @@
 package com.erp.system.service;
 
+import com.erp.common.core.domain.PageVO;
 import com.erp.system.domain.dto.DictDataCreateRequest;
 import com.erp.system.domain.dto.DictDataUpdateRequest;
 import com.erp.system.domain.dto.DictTypeCreateRequest;
 import com.erp.system.domain.dto.DictTypeUpdateRequest;
 import com.erp.system.domain.vo.DictDataVO;
 import com.erp.system.domain.vo.DictTypeVO;
-import com.erp.system.domain.vo.PageVO;
 import java.util.List;
 import java.util.UUID;
 

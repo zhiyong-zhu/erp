@@ -2,6 +2,7 @@ package com.erp.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
 import com.erp.system.domain.dto.RoleCreateRequest;
 import com.erp.system.domain.dto.RolePermissionUpdateRequest;
@@ -10,7 +11,6 @@ import com.erp.system.domain.dto.StatusUpdateRequest;
 import com.erp.system.domain.entity.SysPermission;
 import com.erp.system.domain.entity.SysRole;
 import com.erp.system.domain.entity.SysRolePermission;
-import com.erp.system.domain.vo.PageVO;
 import com.erp.system.domain.vo.PermissionVO;
 import com.erp.system.domain.vo.RoleVO;
 import com.erp.system.mapper.SysPermissionMapper;

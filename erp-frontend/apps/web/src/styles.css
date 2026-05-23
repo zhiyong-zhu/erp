@@ -110,3 +110,97 @@ body {
 .role-form-card {
   margin-top: 8px;
 }
+
+.product-sku-section {
+  margin-bottom: 8px;
+}
+
+.product-sku-hint {
+  display: inline-block;
+}
+
+.product-sku-card {
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: #f8fbfd;
+}
+
+.product-spec-card {
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.product-spec-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.product-spec-empty {
+  margin-top: 12px;
+  color: #64748b;
+}
+
+.product-detail-panel {
+  height: 100%;
+  border-radius: 18px;
+}
+
+.product-list-panel {
+  height: 100%;
+  border-radius: 18px;
+}
+
+.product-page-split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.product-page-panel {
+  min-height: 0;
+}
+
+.product-detail-tab-scroll {
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.erp-table-row-active > td {
+  background: rgba(15, 118, 110, 0.08) !important;
+}
+
+.product-sku-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.product-sku-grid-item {
+  min-width: 0;
+}
+
+.product-sku-grid-item-full {
+  grid-column: 1 / -1;
+}
+
+.product-sku-grid .ant-form-item {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .product-spec-row {
+    grid-template-columns: 1fr;
+  }
+
+  .product-sku-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-sku-grid-item-full {
+    grid-column: auto;
+  }
+}

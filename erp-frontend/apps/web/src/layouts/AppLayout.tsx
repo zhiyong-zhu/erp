@@ -2,7 +2,7 @@ import { ApartmentOutlined, FileSearchOutlined, LogoutOutlined, ProfileOutlined,
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { SYSTEM_PERMISSIONS } from "@erp/shared";
+import { PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
 import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
@@ -76,6 +76,29 @@ export function AppLayout() {
               }
             : null
         ].filter(Boolean)
+      },
+      {
+        key: "/product",
+        icon: <ProfileOutlined />,
+        label: "产品管理",
+        children: [
+          hasPermission(PRODUCT_PERMISSIONS.CATEGORY_LIST)
+            ? {
+                key: "/product/categories",
+                icon: <ProfileOutlined />,
+                label: "分类管理",
+                onClick: () => navigate("/product/categories")
+              }
+            : null,
+          hasPermission(PRODUCT_PERMISSIONS.PRODUCT_LIST)
+            ? {
+                key: "/product/products",
+                icon: <TeamOutlined />,
+                label: "产品列表",
+                onClick: () => navigate("/product/products")
+              }
+            : null
+        ].filter(Boolean)
       }
     ].filter((item) => Array.isArray(item.children) && item.children.length > 0),
     [navigate, currentUser]
@@ -88,6 +111,10 @@ export function AppLayout() {
     selectedKeys = ["/system/dict"];
   } else if (location.pathname.startsWith("/system/logs")) {
     selectedKeys = ["/system/logs"];
+  } else if (location.pathname.startsWith("/product/categories")) {
+    selectedKeys = ["/product/categories"];
+  } else if (location.pathname.startsWith("/product/products")) {
+    selectedKeys = ["/product/products"];
   }
 
   return (
