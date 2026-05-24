@@ -60,6 +60,7 @@ export interface MaterialRecord extends BaseRecord {
   defaultSupplierId?: string | null;
   defaultSupplierName?: string | null;
   safetyStock?: number | null;
+  currentStock?: number | null;
   leadTimeDays?: number | null;
   status: number;
 }
@@ -72,6 +73,56 @@ export interface MaterialPayload extends BasePayload {
   specifications?: string;
   defaultSupplierId?: string | null;
   safetyStock?: number;
+  currentStock?: number;
   leadTimeDays?: number;
   status?: number;
+}
+
+export interface MaterialAlertRecord extends MaterialRecord {
+  shortageAmount?: number | null;
+}
+
+export interface SupplierQuoteRecord extends BaseRecord {
+  id: string;
+  supplierId: string;
+  supplierName?: string | null;
+  materialId: string;
+  materialName?: string | null;
+  quotePrice: number;
+  currency: string;
+  minOrderQuantity?: number | null;
+  leadTimeDays?: number | null;
+  remark?: string | null;
+  effectiveDate?: string | null;
+  expiryDate?: string | null;
+}
+
+export interface SupplierQuotePayload extends BasePayload {
+  supplierId: string;
+  materialId: string;
+  quotePrice: number;
+  currency: string;
+  minOrderQuantity?: number;
+  leadTimeDays?: number;
+  remark?: string;
+  effectiveDate?: string;
+  expiryDate?: string;
+}
+
+export interface MaterialReplenishmentRecord {
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  currentStock?: number | null;
+  safetyStock?: number | null;
+  shortageAmount?: number | null;
+  suggestedQuantity?: number | null;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  quotePrice?: number | null;
+  currency?: string | null;
+  estimatedAmount?: number | null;
+  leadTimeDays?: number | null;
+  recommendationReason?: string | null;
 }

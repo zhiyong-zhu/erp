@@ -1,8 +1,16 @@
-import { ApartmentOutlined, FileSearchOutlined, LogoutOutlined, ProfileOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from "@ant-design/icons";
+import {
+  ApartmentOutlined,
+  FileSearchOutlined,
+  LogoutOutlined,
+  ProfileOutlined,
+  SafetyCertificateOutlined,
+  SettingOutlined,
+  TeamOutlined
+} from "@ant-design/icons";
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PURCHASE_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
 import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
@@ -36,44 +44,19 @@ export function AppLayout() {
         label: "系统管理",
         children: [
           hasPermission(SYSTEM_PERMISSIONS.USER_LIST)
-            ? {
-                key: "/system/users",
-                icon: <TeamOutlined />,
-                label: "用户管理",
-                onClick: () => navigate("/system/users")
-              }
+            ? { key: "/system/users", icon: <TeamOutlined />, label: "用户管理", onClick: () => navigate("/system/users") }
             : null,
           hasPermission(SYSTEM_PERMISSIONS.DEPT_LIST)
-            ? {
-                key: "/system/departments",
-                icon: <ApartmentOutlined />,
-                label: "部门管理",
-                onClick: () => navigate("/system/departments")
-              }
+            ? { key: "/system/departments", icon: <ApartmentOutlined />, label: "部门管理", onClick: () => navigate("/system/departments") }
             : null,
           hasPermission(SYSTEM_PERMISSIONS.ROLE_LIST)
-            ? {
-                key: "/system/roles",
-                icon: <SafetyCertificateOutlined />,
-                label: "角色管理",
-                onClick: () => navigate("/system/roles")
-              }
+            ? { key: "/system/roles", icon: <SafetyCertificateOutlined />, label: "角色管理", onClick: () => navigate("/system/roles") }
             : null,
           hasPermission(SYSTEM_PERMISSIONS.DICT_LIST)
-            ? {
-                key: "/system/dict",
-                icon: <ProfileOutlined />,
-                label: "数据字典",
-                onClick: () => navigate("/system/dict")
-              }
+            ? { key: "/system/dict", icon: <ProfileOutlined />, label: "数据字典", onClick: () => navigate("/system/dict") }
             : null,
           hasPermission(SYSTEM_PERMISSIONS.LOG_LIST)
-            ? {
-                key: "/system/logs",
-                icon: <FileSearchOutlined />,
-                label: "操作日志",
-                onClick: () => navigate("/system/logs")
-              }
+            ? { key: "/system/logs", icon: <FileSearchOutlined />, label: "操作日志", onClick: () => navigate("/system/logs") }
             : null
         ].filter(Boolean)
       },
@@ -83,20 +66,26 @@ export function AppLayout() {
         label: "产品管理",
         children: [
           hasPermission(PRODUCT_PERMISSIONS.CATEGORY_LIST)
-            ? {
-                key: "/product/categories",
-                icon: <ProfileOutlined />,
-                label: "分类管理",
-                onClick: () => navigate("/product/categories")
-              }
+            ? { key: "/product/categories", icon: <ProfileOutlined />, label: "分类管理", onClick: () => navigate("/product/categories") }
             : null,
           hasPermission(PRODUCT_PERMISSIONS.PRODUCT_LIST)
-            ? {
-                key: "/product/products",
-                icon: <TeamOutlined />,
-                label: "产品列表",
-                onClick: () => navigate("/product/products")
-              }
+            ? { key: "/product/products", icon: <TeamOutlined />, label: "产品列表", onClick: () => navigate("/product/products") }
+            : null
+        ].filter(Boolean)
+      },
+      {
+        key: "/purchase",
+        icon: <ProfileOutlined />,
+        label: "采购管理",
+        children: [
+          hasPermission(PURCHASE_PERMISSIONS.ORDER_LIST)
+            ? { key: "/purchase/orders", icon: <ProfileOutlined />, label: "采购单", onClick: () => navigate("/purchase/orders") }
+            : null,
+          hasPermission(PURCHASE_PERMISSIONS.PAYABLE_LIST)
+            ? { key: "/purchase/payables", icon: <ProfileOutlined />, label: "应付统计", onClick: () => navigate("/purchase/payables") }
+            : null,
+          hasPermission(PURCHASE_PERMISSIONS.EXCEPTION_LIST)
+            ? { key: "/purchase/exceptions", icon: <FileSearchOutlined />, label: "采购异常", onClick: () => navigate("/purchase/exceptions") }
             : null
         ].filter(Boolean)
       },
@@ -106,28 +95,41 @@ export function AppLayout() {
         label: "原料管理",
         children: [
           hasPermission(MATERIAL_PERMISSIONS.CATEGORY_LIST)
-            ? {
-                key: "/material/categories",
-                icon: <ProfileOutlined />,
-                label: "分类管理",
-                onClick: () => navigate("/material/categories")
-              }
+            ? { key: "/material/categories", icon: <ProfileOutlined />, label: "分类管理", onClick: () => navigate("/material/categories") }
             : null,
           hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
-            ? {
-                key: "/material/materials",
-                icon: <TeamOutlined />,
-                label: "原料列表",
-                onClick: () => navigate("/material/materials")
-              }
+            ? { key: "/material/materials", icon: <TeamOutlined />, label: "原料列表", onClick: () => navigate("/material/materials") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+            ? { key: "/material/inventory", icon: <FileSearchOutlined />, label: "库存台账", onClick: () => navigate("/material/inventory") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+            ? { key: "/material/safety-stock", icon: <SafetyCertificateOutlined />, label: "安全库存设置", onClick: () => navigate("/material/safety-stock") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.ALERT_LIST)
+            ? { key: "/material/alerts", icon: <FileSearchOutlined />, label: "安全库存预警", onClick: () => navigate("/material/alerts") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.REPLENISH_LIST)
+            ? { key: "/material/replenishment", icon: <ProfileOutlined />, label: "补货建议", onClick: () => navigate("/material/replenishment") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.QUOTE_LIST)
+            ? { key: "/material/quotes", icon: <ProfileOutlined />, label: "供应商报价", onClick: () => navigate("/material/quotes") }
             : null,
           hasPermission(MATERIAL_PERMISSIONS.SUPPLIER_LIST)
-            ? {
-                key: "/material/suppliers",
-                icon: <SafetyCertificateOutlined />,
-                label: "供应商管理",
-                onClick: () => navigate("/material/suppliers")
-              }
+            ? { key: "/material/suppliers", icon: <SafetyCertificateOutlined />, label: "供应商管理", onClick: () => navigate("/material/suppliers") }
+            : null
+        ].filter(Boolean)
+      },
+      {
+        key: "/inventory",
+        icon: <FileSearchOutlined />,
+        label: "库存管理",
+        children: [
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+            ? { key: "/inventory/receipts", icon: <ProfileOutlined />, label: "正式入库单", onClick: () => navigate("/inventory/receipts") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+            ? { key: "/inventory/transactions", icon: <ProfileOutlined />, label: "库存流水", onClick: () => navigate("/inventory/transactions") }
             : null
         ].filter(Boolean)
       }
@@ -146,12 +148,32 @@ export function AppLayout() {
     selectedKeys = ["/product/categories"];
   } else if (location.pathname.startsWith("/product/products")) {
     selectedKeys = ["/product/products"];
+  } else if (location.pathname.startsWith("/purchase/orders")) {
+    selectedKeys = ["/purchase/orders"];
+  } else if (location.pathname.startsWith("/purchase/payables")) {
+    selectedKeys = ["/purchase/payables"];
+  } else if (location.pathname.startsWith("/purchase/exceptions")) {
+    selectedKeys = ["/purchase/exceptions"];
   } else if (location.pathname.startsWith("/material/categories")) {
     selectedKeys = ["/material/categories"];
   } else if (location.pathname.startsWith("/material/materials")) {
     selectedKeys = ["/material/materials"];
+  } else if (location.pathname.startsWith("/material/inventory")) {
+    selectedKeys = ["/material/inventory"];
+  } else if (location.pathname.startsWith("/material/safety-stock")) {
+    selectedKeys = ["/material/safety-stock"];
+  } else if (location.pathname.startsWith("/material/alerts")) {
+    selectedKeys = ["/material/alerts"];
+  } else if (location.pathname.startsWith("/material/replenishment")) {
+    selectedKeys = ["/material/replenishment"];
+  } else if (location.pathname.startsWith("/material/quotes")) {
+    selectedKeys = ["/material/quotes"];
   } else if (location.pathname.startsWith("/material/suppliers")) {
     selectedKeys = ["/material/suppliers"];
+  } else if (location.pathname.startsWith("/inventory/receipts")) {
+    selectedKeys = ["/inventory/receipts"];
+  } else if (location.pathname.startsWith("/inventory/transactions")) {
+    selectedKeys = ["/inventory/transactions"];
   }
 
   return (
@@ -164,19 +186,14 @@ export function AppLayout() {
             <Text type="secondary">Management Console</Text>
           </div>
         </div>
-        <Menu
-          mode="inline"
-          defaultOpenKeys={["/system"]}
-          selectedKeys={selectedKeys}
-          items={menuItems}
-        />
+        <Menu mode="inline" defaultOpenKeys={["/system"]} selectedKeys={selectedKeys} items={menuItems} />
       </Sider>
       <Layout>
         <Header className="erp-header erp-header-between">
           <div>
             <Title level={4} style={{ margin: 0 }}>ERP 管理后台</Title>
             <Text type="secondary">
-              {currentUser ? `${currentUser.realName || currentUser.username} 已登录，当前开放系统管理模块。` : "登录与用户管理功能已接通"}
+              {currentUser ? `${currentUser.realName || currentUser.username} 已登录` : "请先登录系统"}
             </Text>
           </div>
           <Button icon={<LogoutOutlined />} onClick={() => void handleLogout()}>

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
+import com.erp.common.security.util.SecurityUtils;
 import com.erp.material.domain.dto.SupplierRequest;
 import com.erp.material.domain.entity.Supplier;
 import com.erp.material.domain.vo.SupplierVO;
@@ -42,6 +43,7 @@ public class SupplierServiceImpl implements SupplierService {
         }
         if (supplier.getId() == null) {
             supplier.setId(UUID.randomUUID());
+            supplier.setCreatedBy(SecurityUtils.getUserId());
             supplier.setCreatedAt(OffsetDateTime.now());
         }
         supplier.setCode(request.getCode());
@@ -56,6 +58,7 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setTaxNumber(request.getTaxNumber());
         supplier.setCreditRating(request.getCreditRating());
         supplier.setStatus(request.getStatus() == null ? 1 : request.getStatus());
+        supplier.setUpdatedBy(SecurityUtils.getUserId());
         supplier.setUpdatedAt(OffsetDateTime.now());
         if (id == null) {
             supplierMapper.insert(supplier);

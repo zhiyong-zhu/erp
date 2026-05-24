@@ -57,9 +57,28 @@ export const MATERIAL_PERMISSIONS = {
   MATERIAL_LIST: "material:list",
   MATERIAL_CREATE: "material:create",
   MATERIAL_UPDATE: "material:update",
+  MATERIAL_IMPORT: "material:import",
+  MATERIAL_EXPORT: "material:export",
+  ALERT_LIST: "material:alert:list",
+  REPLENISH_LIST: "material:replenish:list",
   SUPPLIER_LIST: "material:supplier:list",
   SUPPLIER_CREATE: "material:supplier:create",
-  SUPPLIER_UPDATE: "material:supplier:update"
+  SUPPLIER_UPDATE: "material:supplier:update",
+  QUOTE_LIST: "material:quote:list",
+  QUOTE_CREATE: "material:quote:create",
+  QUOTE_UPDATE: "material:quote:update"
 } as const;
 
 export type MaterialPermissionCode = (typeof MATERIAL_PERMISSIONS)[keyof typeof MATERIAL_PERMISSIONS];
+
+export const PURCHASE_PERMISSIONS = {
+  ROOT: "purchase",
+  ORDER_LIST: "purchase:order:list",
+  ORDER_CREATE: "purchase:order:create",
+  ORDER_UPDATE: "purchase:order:update",
+  PAYABLE_LIST: "purchase:payable:list",
+  EXCEPTION_LIST: "purchase:exception:list",
+  EXCEPTION_UPDATE: "purchase:exception:update"
+} as const;
+
+export type PurchasePermissionCode = (typeof PURCHASE_PERMISSIONS)[keyof typeof PURCHASE_PERMISSIONS];

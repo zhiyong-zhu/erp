@@ -16,6 +16,7 @@ public class MaterialRequest extends BaseDTO {
     private String specifications;
     private UUID defaultSupplierId;
     private BigDecimal safetyStock;
+    private BigDecimal currentStock;
     private Integer leadTimeDays;
     private Integer status;
 
@@ -33,6 +34,8 @@ public class MaterialRequest extends BaseDTO {
     public void setDefaultSupplierId(UUID defaultSupplierId) { this.defaultSupplierId = defaultSupplierId; }
     public BigDecimal getSafetyStock() { return safetyStock; }
     public void setSafetyStock(BigDecimal safetyStock) { this.safetyStock = safetyStock; }
+    public BigDecimal getCurrentStock() { return currentStock; }
+    public void setCurrentStock(BigDecimal currentStock) { this.currentStock = currentStock; }
     public Integer getLeadTimeDays() { return leadTimeDays; }
     public void setLeadTimeDays(Integer leadTimeDays) { this.leadTimeDays = leadTimeDays; }
     public Integer getStatus() { return status; }

@@ -1,22 +1,32 @@
 import { App as AntApp } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import { fetchUserInfo } from "../api/auth";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PURCHASE_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { fetchUserInfo, refreshTokens } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
+import { InventoryReceiptPage } from "../pages/inventory/receipts/InventoryReceiptPage";
+import { InventoryTransactionPage } from "../pages/inventory/transactions/InventoryTransactionPage";
 import { LoginPage } from "../pages/login/LoginPage";
+import { MaterialAlertPage } from "../pages/material/alerts/MaterialAlertPage";
 import { MaterialCategoryPage } from "../pages/material/categories/MaterialCategoryPage";
+import { MaterialInventoryPage } from "../pages/material/inventory/MaterialInventoryPage";
 import { MaterialManagementPage } from "../pages/material/materials/MaterialManagementPage";
+import { SupplierQuotePage } from "../pages/material/quotes/SupplierQuotePage";
+import { MaterialReplenishmentPage } from "../pages/material/replenishment/MaterialReplenishmentPage";
+import { MaterialSafetyStockPage } from "../pages/material/safety-stock/MaterialSafetyStockPage";
 import { SupplierManagementPage } from "../pages/material/suppliers/SupplierManagementPage";
 import { ProductCategoryPage } from "../pages/product/categories/ProductCategoryPage";
 import { ProductManagementPage } from "../pages/product/products/ProductManagementPage";
+import { PurchaseExceptionPage } from "../pages/purchase/exceptions/PurchaseExceptionPage";
+import { PurchasePayablePage } from "../pages/purchase/payables/PurchasePayablePage";
+import { PurchaseOrderPage } from "../pages/purchase/orders/PurchaseOrderPage";
 import { DepartmentManagementPage } from "../pages/system/departments/DepartmentManagementPage";
 import { DictManagementPage } from "../pages/system/dicts/DictManagementPage";
 import { OperationLogPage } from "../pages/system/logs/OperationLogPage";
 import { RoleManagementPage } from "../pages/system/roles/RoleManagementPage";
 import { UserManagementPage } from "../pages/system/users/UserManagementPage";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
-import { clearAuth, getAuthState, saveUser, subscribeAuth } from "../store/auth";
+import { clearAuth, getAuthState, saveTokens, saveUser, subscribeAuth } from "../store/auth";
 
 function resolveDefaultRoute() {
   const permissions = getAuthState().user?.permissions ?? [];
@@ -41,14 +51,23 @@ function resolveDefaultRoute() {
   if (permissions.includes(PRODUCT_PERMISSIONS.CATEGORY_LIST)) {
     return "/product/categories";
   }
+  if (permissions.includes(PURCHASE_PERMISSIONS.ORDER_LIST)) {
+    return "/purchase/orders";
+  }
+  if (permissions.includes(PURCHASE_PERMISSIONS.PAYABLE_LIST)) {
+    return "/purchase/payables";
+  }
+  if (permissions.includes(PURCHASE_PERMISSIONS.EXCEPTION_LIST)) {
+    return "/purchase/exceptions";
+  }
   if (permissions.includes(MATERIAL_PERMISSIONS.MATERIAL_LIST)) {
     return "/material/materials";
   }
-  if (permissions.includes(MATERIAL_PERMISSIONS.CATEGORY_LIST)) {
-    return "/material/categories";
+  if (permissions.includes(MATERIAL_PERMISSIONS.ALERT_LIST)) {
+    return "/material/alerts";
   }
-  if (permissions.includes(MATERIAL_PERMISSIONS.SUPPLIER_LIST)) {
-    return "/material/suppliers";
+  if (permissions.includes(MATERIAL_PERMISSIONS.REPLENISH_LIST)) {
+    return "/material/replenishment";
   }
   return "/login";
 }
@@ -65,7 +84,14 @@ export function AppRouter() {
     }
     let active = true;
     setBootstrapping(true);
-    void fetchUserInfo()
+    const refreshToken = getAuthState().refreshToken;
+    void (refreshToken
+      ? refreshTokens({ refreshToken }).catch(() => {
+          saveTokens(getAuthState().accessToken, refreshToken);
+          return null;
+        })
+      : Promise.resolve(null))
+      .then(() => fetchUserInfo())
       .then((user) => {
         if (!active) {
           return;
@@ -109,9 +135,19 @@ export function AppRouter() {
             <Route path="/system/logs" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.LOG_LIST}><OperationLogPage /></PermissionGuard>} />
             <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
             <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />
+            <Route path="/purchase/orders" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.ORDER_LIST}><PurchaseOrderPage /></PermissionGuard>} />
+            <Route path="/purchase/payables" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.PAYABLE_LIST}><PurchasePayablePage /></PermissionGuard>} />
+            <Route path="/purchase/exceptions" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.EXCEPTION_LIST}><PurchaseExceptionPage /></PermissionGuard>} />
             <Route path="/material/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.CATEGORY_LIST}><MaterialCategoryPage /></PermissionGuard>} />
             <Route path="/material/materials" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialManagementPage /></PermissionGuard>} />
+            <Route path="/material/inventory" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialInventoryPage /></PermissionGuard>} />
+            <Route path="/material/safety-stock" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialSafetyStockPage /></PermissionGuard>} />
+            <Route path="/material/alerts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.ALERT_LIST}><MaterialAlertPage /></PermissionGuard>} />
+            <Route path="/material/replenishment" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.REPLENISH_LIST}><MaterialReplenishmentPage /></PermissionGuard>} />
+            <Route path="/material/quotes" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.QUOTE_LIST}><SupplierQuotePage /></PermissionGuard>} />
             <Route path="/material/suppliers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.SUPPLIER_LIST}><SupplierManagementPage /></PermissionGuard>} />
+            <Route path="/inventory/receipts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryReceiptPage /></PermissionGuard>} />
+            <Route path="/inventory/transactions" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryTransactionPage /></PermissionGuard>} />
           </Route>
         </Routes>
       </Router>

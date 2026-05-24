@@ -1,17 +1,39 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
-import { App, Button, Input, Space, Table, Typography } from "antd";
+import {
+  ModalForm,
+  ProFormDigit,
+  ProFormSelect,
+  ProFormText,
+  ProFormTextArea
+} from "@ant-design/pro-components";
+import { App, Button, Input, Space, Table, Typography, Upload } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { fetchMaterialCategoryTree, fetchMaterials, fetchSuppliers, createMaterial, updateMaterial } from "../../../api/material";
+import {
+  createMaterial,
+  exportMaterialsFile,
+  fetchMaterialCategoryTree,
+  fetchMaterials,
+  fetchSuppliers,
+  importMaterialsFile,
+  updateMaterial
+} from "../../../api/material";
 import { hasPermission } from "../../../store/auth";
-import type { MaterialCategoryRecord, MaterialPayload, MaterialRecord, SupplierRecord } from "../../../types/material";
+import type {
+  MaterialCategoryRecord,
+  MaterialPayload,
+  MaterialRecord,
+  SupplierRecord
+} from "../../../types/material";
 
 const { Title, Text } = Typography;
 
 function flattenCategories(categories: MaterialCategoryRecord[]): MaterialCategoryRecord[] {
-  return categories.flatMap((category) => [category, ...flattenCategories(category.children ?? [])]);
+  return categories.flatMap((category) => [
+    category,
+    ...flattenCategories(category.children ?? [])
+  ]);
 }
 
 export function MaterialManagementPage() {
@@ -28,13 +50,24 @@ export function MaterialManagementPage() {
   const { message } = App.useApp();
   const canCreate = hasPermission(MATERIAL_PERMISSIONS.MATERIAL_CREATE);
   const canUpdate = hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE);
+  const canImport = hasPermission(MATERIAL_PERMISSIONS.MATERIAL_IMPORT);
+  const canExport = hasPermission(MATERIAL_PERMISSIONS.MATERIAL_EXPORT);
 
   const categoryOptions = useMemo(
-    () => flattenCategories(categories).map((category) => ({ label: category.name, value: category.id })),
+    () =>
+      flattenCategories(categories).map((category) => ({
+        label: category.name,
+        value: category.id as string
+      })),
     [categories]
   );
+
   const supplierOptions = useMemo(
-    () => suppliers.map((supplier) => ({ label: supplier.name, value: supplier.id })),
+    () =>
+      suppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier.id as string
+      })),
     [suppliers]
   );
 
@@ -73,7 +106,7 @@ export function MaterialManagementPage() {
   }
 
   async function handleUpdate(values: MaterialPayload) {
-    if (!editingMaterial) {
+    if (!editingMaterial?.id) {
       return false;
     }
     try {
@@ -88,15 +121,51 @@ export function MaterialManagementPage() {
     }
   }
 
+  async function handleExport() {
+    try {
+      const blob = await exportMaterialsFile();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "materials.xlsx";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      message.success("原料导出成功");
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "原料导出失败");
+    }
+  }
+
+  async function handleImport(file: File) {
+    try {
+      await importMaterialsFile(file);
+      message.success("原料导入成功");
+      await loadMaterials();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "原料导入失败");
+    }
+    return false;
+  }
+
   const columns: ColumnsType<MaterialRecord> = [
-    { title: "原料编码", dataIndex: "code", key: "code" },
+    { title: "原料编码", dataIndex: "code", key: "code", width: 140 },
     { title: "原料名称", dataIndex: "name", key: "name" },
-    { title: "分类", dataIndex: "categoryName", key: "categoryName" },
-    { title: "单位", dataIndex: "unit", key: "unit", width: 80 },
-    { title: "默认供应商", dataIndex: "defaultSupplierName", key: "defaultSupplierName" },
-    { title: "安全库存", dataIndex: "safetyStock", key: "safetyStock", width: 100 },
+    { title: "分类", dataIndex: "categoryName", key: "categoryName", width: 140 },
+    { title: "单位", dataIndex: "unit", key: "unit", width: 90 },
+    { title: "默认供应商", dataIndex: "defaultSupplierName", key: "defaultSupplierName", width: 160 },
+    { title: "当前库存", dataIndex: "currentStock", key: "currentStock", width: 110 },
+    { title: "安全库存", dataIndex: "safetyStock", key: "safetyStock", width: 110 },
     { title: "采购周期(天)", dataIndex: "leadTimeDays", key: "leadTimeDays", width: 120 },
-    { title: "操作", key: "actions", render: (_, record) => <Button type="link" disabled={!canUpdate} onClick={() => setEditingMaterial(record)}>编辑</Button> }
+    {
+      title: "操作",
+      key: "actions",
+      width: 120,
+      render: (_, record) => (
+        <Button type="link" disabled={!canUpdate} onClick={() => setEditingMaterial(record)}>
+          编辑
+        </Button>
+      )
+    }
   ];
 
   return (
@@ -104,7 +173,7 @@ export function MaterialManagementPage() {
       <div className="page-header">
         <div>
           <Title level={3} style={{ margin: 0 }}>原料管理 / 原料列表</Title>
-          <Text type="secondary">维护原料基础资料、规格、安全库存和默认供应商，为采购和库存预警提供主数据。</Text>
+          <Text type="secondary">维护原料基础资料、规格、安全库存、当前库存和默认供应商，为采购补货和库存预警提供主数据。</Text>
         </div>
         <Space>
           <Input.Search
@@ -118,7 +187,15 @@ export function MaterialManagementPage() {
             }}
             style={{ width: 240 }}
           />
-          <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>新建原料</Button>
+          <Upload beforeUpload={handleImport} showUploadList={false} disabled={!canImport}>
+            <Button disabled={!canImport}>导入原料</Button>
+          </Upload>
+          <Button disabled={!canExport} onClick={() => void handleExport()}>
+            导出原料
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>
+            新建原料
+          </Button>
         </Space>
       </div>
 
@@ -137,23 +214,35 @@ export function MaterialManagementPage() {
         }}
       />
 
-      <MaterialForm title="新建原料" open={createOpen} categoryOptions={categoryOptions} supplierOptions={supplierOptions} onCancel={() => setCreateOpen(false)} onFinish={handleCreate} />
+      <MaterialForm
+        title="新建原料"
+        open={createOpen}
+        categoryOptions={categoryOptions}
+        supplierOptions={supplierOptions}
+        onCancel={() => setCreateOpen(false)}
+        onFinish={handleCreate}
+      />
       <MaterialForm
         title="编辑原料"
         open={!!editingMaterial}
         categoryOptions={categoryOptions}
         supplierOptions={supplierOptions}
-        initialValues={editingMaterial ? {
-          code: editingMaterial.code,
-          name: editingMaterial.name,
-          categoryId: editingMaterial.categoryId ?? undefined,
-          unit: editingMaterial.unit,
-          specifications: editingMaterial.specifications ?? "",
-          defaultSupplierId: editingMaterial.defaultSupplierId ?? undefined,
-          safetyStock: editingMaterial.safetyStock ?? undefined,
-          leadTimeDays: editingMaterial.leadTimeDays ?? undefined,
-          status: editingMaterial.status
-        } : undefined}
+        initialValues={
+          editingMaterial
+            ? {
+                code: editingMaterial.code,
+                name: editingMaterial.name,
+                categoryId: editingMaterial.categoryId ?? undefined,
+                unit: editingMaterial.unit,
+                specifications: editingMaterial.specifications ?? "",
+                defaultSupplierId: editingMaterial.defaultSupplierId ?? undefined,
+                safetyStock: editingMaterial.safetyStock ?? undefined,
+                currentStock: editingMaterial.currentStock ?? undefined,
+                leadTimeDays: editingMaterial.leadTimeDays ?? undefined,
+                status: editingMaterial.status
+              }
+            : undefined
+        }
         onCancel={() => setEditingMaterial(null)}
         onFinish={handleUpdate}
       />
@@ -161,7 +250,15 @@ export function MaterialManagementPage() {
   );
 }
 
-function MaterialForm({ title, open, initialValues, categoryOptions, supplierOptions, onCancel, onFinish }: {
+function MaterialForm({
+  title,
+  open,
+  initialValues,
+  categoryOptions,
+  supplierOptions,
+  onCancel,
+  onFinish
+}: {
   title: string;
   open: boolean;
   initialValues?: Partial<MaterialPayload>;
@@ -171,16 +268,34 @@ function MaterialForm({ title, open, initialValues, categoryOptions, supplierOpt
   onFinish: (values: MaterialPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<MaterialPayload> title={title} open={open} initialValues={initialValues ?? { status: 1 }} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
-      <ProFormText name="code" label="原料编码" rules={[{ required: true }]} />
-      <ProFormText name="name" label="原料名称" rules={[{ required: true }]} />
-      <ProFormSelect name="categoryId" label="原料分类" options={categoryOptions} />
-      <ProFormText name="unit" label="单位" rules={[{ required: true }]} />
-      <ProFormTextArea name="specifications" label="规格描述" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} />
-      <ProFormSelect name="defaultSupplierId" label="默认供应商" options={supplierOptions} allowClear />
-      <ProFormDigit name="safetyStock" label="安全库存" min={0} fieldProps={{ precision: 2 }} />
-      <ProFormDigit name="leadTimeDays" label="采购周期(天)" min={0} fieldProps={{ precision: 0 }} />
-      <ProFormSelect name="status" label="状态" options={[{ label: "启用", value: 1 }, { label: "禁用", value: 0 }]} />
+    <ModalForm<MaterialPayload>
+      title={title}
+      open={open}
+      width={980}
+      grid
+      rowProps={{ gutter: 16 }}
+      initialValues={initialValues ?? { status: 1 }}
+      modalProps={{ destroyOnClose: true, onCancel }}
+      onFinish={onFinish}
+    >
+      <ProFormText name="code" label="原料编码" rules={[{ required: true, message: "请输入原料编码" }]} colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="name" label="原料名称" rules={[{ required: true, message: "请输入原料名称" }]} colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect name="categoryId" label="原料分类" options={categoryOptions} colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="unit" label="单位" rules={[{ required: true, message: "请输入单位" }]} colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect name="defaultSupplierId" label="默认供应商" options={supplierOptions} allowClear colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect
+        name="status"
+        label="状态"
+        options={[
+          { label: "启用", value: 1 },
+          { label: "禁用", value: 0 }
+        ]}
+        colProps={{ xs: 24, md: 8 }}
+      />
+      <ProFormDigit name="safetyStock" label="安全库存" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
+      <ProFormDigit name="currentStock" label="当前库存" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
+      <ProFormDigit name="leadTimeDays" label="采购周期(天)" min={0} fieldProps={{ precision: 0 }} colProps={{ xs: 24, md: 8 }} />
+      <ProFormTextArea name="specifications" label="规格描述" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
     </ModalForm>
   );
 }

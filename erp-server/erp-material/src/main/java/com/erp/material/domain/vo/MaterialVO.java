@@ -15,6 +15,7 @@ public class MaterialVO extends BaseVO {
     private UUID defaultSupplierId;
     private String defaultSupplierName;
     private BigDecimal safetyStock;
+    private BigDecimal currentStock;
     private Integer leadTimeDays;
     private Integer status;
 
@@ -38,6 +39,8 @@ public class MaterialVO extends BaseVO {
     public void setDefaultSupplierName(String defaultSupplierName) { this.defaultSupplierName = defaultSupplierName; }
     public BigDecimal getSafetyStock() { return safetyStock; }
     public void setSafetyStock(BigDecimal safetyStock) { this.safetyStock = safetyStock; }
+    public BigDecimal getCurrentStock() { return currentStock; }
+    public void setCurrentStock(BigDecimal currentStock) { this.currentStock = currentStock; }
     public Integer getLeadTimeDays() { return leadTimeDays; }
     public void setLeadTimeDays(Integer leadTimeDays) { this.leadTimeDays = leadTimeDays; }
     public Integer getStatus() { return status; }

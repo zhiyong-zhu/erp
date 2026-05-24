@@ -1,6 +1,6 @@
 import { http } from "./http";
 import { clearAuth, saveTokens } from "../store/auth";
-import type { LoginRequest, LoginResponse, UserInfo } from "../types/auth";
+import type { LoginRequest, LoginResponse, RefreshTokenRequest, UserInfo } from "../types/auth";
 
 interface ApiResponse<T> {
   code: number;
@@ -27,4 +27,11 @@ export async function logout(): Promise<void> {
 export async function fetchUserInfo(): Promise<UserInfo> {
   const response = await http.get<ApiResponse<UserInfo>>("/auth/userinfo");
   return response.data.data;
+}
+
+export async function refreshTokens(payload: RefreshTokenRequest): Promise<LoginResponse> {
+  const response = await http.post<ApiResponse<LoginResponse>>("/auth/refresh", payload);
+  const data = response.data.data;
+  saveTokens(data.accessToken, data.refreshToken);
+  return data;
 }

@@ -2,6 +2,7 @@ package com.erp.material.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.erp.common.core.exception.BizException;
+import com.erp.common.security.util.SecurityUtils;
 import com.erp.material.domain.dto.MaterialCategoryRequest;
 import com.erp.material.domain.entity.MaterialCategory;
 import com.erp.material.domain.vo.MaterialCategoryVO;
@@ -53,6 +54,7 @@ public class MaterialCategoryServiceImpl implements MaterialCategoryService {
         }
         if (category.getId() == null) {
             category.setId(UUID.randomUUID());
+            category.setCreatedBy(SecurityUtils.getUserId());
             category.setCreatedAt(OffsetDateTime.now());
         }
         category.setParentId(request.getParentId());
@@ -60,6 +62,7 @@ public class MaterialCategoryServiceImpl implements MaterialCategoryService {
         category.setCode(request.getCode());
         category.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
         category.setStatus(request.getStatus() == null ? 1 : request.getStatus());
+        category.setUpdatedBy(SecurityUtils.getUserId());
         category.setUpdatedAt(OffsetDateTime.now());
         if (id == null) {
             materialCategoryMapper.insert(category);
