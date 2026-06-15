@@ -1,16 +1,20 @@
 import {
   ApartmentOutlined,
+  CarOutlined,
   FileSearchOutlined,
   LogoutOutlined,
   ProfileOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
-  TeamOutlined
+  ShoppingOutlined,
+  TeamOutlined,
+  ToolOutlined,
+  WalletOutlined
 } from "@ant-design/icons";
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PURCHASE_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
 import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
@@ -74,6 +78,28 @@ export function AppLayout() {
         ].filter(Boolean)
       },
       {
+        key: "/production",
+        icon: <SettingOutlined />,
+        label: "生产管理",
+        children: [
+          hasPermission(PRODUCTION_PERMISSIONS.PROCESS_LIST)
+            ? { key: "/production/processes", icon: <ProfileOutlined />, label: "工艺路线", onClick: () => navigate("/production/processes") }
+            : null,
+          hasPermission(PRODUCTION_PERMISSIONS.BOM_LIST)
+            ? { key: "/production/boms", icon: <ProfileOutlined />, label: "生产BOM", onClick: () => navigate("/production/boms") }
+            : null,
+          hasPermission(PRODUCTION_PERMISSIONS.BATCH_LIST)
+            ? { key: "/production/batches", icon: <ApartmentOutlined />, label: "生产工单", onClick: () => navigate("/production/batches") }
+            : null,
+          hasPermission(PRODUCTION_PERMISSIONS.REPORT_LIST)
+            ? { key: "/production/reports", icon: <ToolOutlined />, label: "生产执行", onClick: () => navigate("/production/reports") }
+            : null,
+          hasPermission(PRODUCTION_PERMISSIONS.SERIAL_LIST)
+            ? { key: "/production/serials", icon: <FileSearchOutlined />, label: "序列号追溯", onClick: () => navigate("/production/serials") }
+            : null
+        ].filter(Boolean)
+      },
+      {
         key: "/purchase",
         icon: <ProfileOutlined />,
         label: "采购管理",
@@ -132,6 +158,31 @@ export function AppLayout() {
             ? { key: "/inventory/transactions", icon: <ProfileOutlined />, label: "库存流水", onClick: () => navigate("/inventory/transactions") }
             : null
         ].filter(Boolean)
+      },
+      {
+        key: "/sales",
+        icon: <ShoppingOutlined />,
+        label: "销售管理",
+        children: [
+          hasPermission(SALES_PERMISSIONS.CUSTOMER_LIST)
+            ? { key: "/sales/customers", icon: <TeamOutlined />, label: "客户管理", onClick: () => navigate("/sales/customers") }
+            : null,
+          hasPermission(SALES_PERMISSIONS.ORDER_LIST)
+            ? { key: "/sales/orders", icon: <ProfileOutlined />, label: "销售订单", onClick: () => navigate("/sales/orders") }
+            : null,
+          hasPermission(SALES_PERMISSIONS.RETURN_LIST)
+            ? { key: "/sales/returns", icon: <ProfileOutlined />, label: "销售退货", onClick: () => navigate("/sales/returns") }
+            : null,
+          hasPermission(SALES_PERMISSIONS.SHIPPING_LIST)
+            ? { key: "/sales/shipping", icon: <CarOutlined />, label: "发货管理", onClick: () => navigate("/sales/shipping") }
+            : null,
+          hasPermission(SALES_PERMISSIONS.RECEIVABLE_LIST)
+            ? { key: "/sales/receivables", icon: <WalletOutlined />, label: "应收统计", onClick: () => navigate("/sales/receivables") }
+            : null,
+          hasPermission(SALES_PERMISSIONS.ORDER_LIST)
+            ? { key: "/sales/ecommerce", icon: <ShoppingOutlined />, label: "电商平台", onClick: () => navigate("/sales/ecommerce") }
+            : null
+        ].filter(Boolean)
       }
     ].filter((item) => Array.isArray(item.children) && item.children.length > 0),
     [navigate, currentUser]
@@ -148,6 +199,16 @@ export function AppLayout() {
     selectedKeys = ["/product/categories"];
   } else if (location.pathname.startsWith("/product/products")) {
     selectedKeys = ["/product/products"];
+  } else if (location.pathname.startsWith("/production/processes")) {
+    selectedKeys = ["/production/processes"];
+  } else if (location.pathname.startsWith("/production/boms")) {
+    selectedKeys = ["/production/boms"];
+  } else if (location.pathname.startsWith("/production/batches")) {
+    selectedKeys = ["/production/batches"];
+  } else if (location.pathname.startsWith("/production/reports")) {
+    selectedKeys = ["/production/reports"];
+  } else if (location.pathname.startsWith("/production/serials")) {
+    selectedKeys = ["/production/serials"];
   } else if (location.pathname.startsWith("/purchase/orders")) {
     selectedKeys = ["/purchase/orders"];
   } else if (location.pathname.startsWith("/purchase/payables")) {
@@ -174,6 +235,18 @@ export function AppLayout() {
     selectedKeys = ["/inventory/receipts"];
   } else if (location.pathname.startsWith("/inventory/transactions")) {
     selectedKeys = ["/inventory/transactions"];
+  } else if (location.pathname.startsWith("/sales/customers")) {
+    selectedKeys = ["/sales/customers"];
+  } else if (location.pathname.startsWith("/sales/orders")) {
+    selectedKeys = ["/sales/orders"];
+  } else if (location.pathname.startsWith("/sales/returns")) {
+    selectedKeys = ["/sales/returns"];
+  } else if (location.pathname.startsWith("/sales/shipping")) {
+    selectedKeys = ["/sales/shipping"];
+  } else if (location.pathname.startsWith("/sales/receivables")) {
+    selectedKeys = ["/sales/receivables"];
+  } else if (location.pathname.startsWith("/sales/ecommerce")) {
+    selectedKeys = ["/sales/ecommerce"];
   }
 
   return (

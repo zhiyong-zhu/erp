@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS production_box (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    box_code VARCHAR(100) NOT NULL UNIQUE,
+    batch_id UUID NOT NULL REFERENCES production_batch(id),
+    batch_no VARCHAR(50) NOT NULL,
+    product_id UUID NOT NULL REFERENCES product(id),
+    product_code VARCHAR(50),
+    product_name VARCHAR(200),
+    package_id UUID REFERENCES product_package(id),
+    package_name VARCHAR(100),
+    package_level INTEGER,
+    quantity NUMERIC(14,4) NOT NULL,
+    serial_nos TEXT,
+    label_html TEXT,
+    status VARCHAR(30) NOT NULL DEFAULT 'PACKED',
+    remark VARCHAR(500),
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_by UUID,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);

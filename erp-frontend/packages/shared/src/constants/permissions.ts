@@ -82,3 +82,42 @@ export const PURCHASE_PERMISSIONS = {
 } as const;
 
 export type PurchasePermissionCode = (typeof PURCHASE_PERMISSIONS)[keyof typeof PURCHASE_PERMISSIONS];
+
+export const SALES_PERMISSIONS = {
+  ROOT: "sales",
+  CUSTOMER_LIST: "sales:customer:list",
+  CUSTOMER_CREATE: "sales:customer:create",
+  CUSTOMER_UPDATE: "sales:customer:update",
+  ORDER_LIST: "sales:order:list",
+  ORDER_CREATE: "sales:order:create",
+  ORDER_UPDATE: "sales:order:update",
+  RETURN_LIST: "sales:return:list",
+  RETURN_CREATE: "sales:return:create",
+  RETURN_UPDATE: "sales:return:update",
+  SHIPPING_LIST: "sales:shipping:list",
+  SHIPPING_UPDATE: "sales:shipping:update",
+  RECEIVABLE_LIST: "sales:receivable:list",
+  REPORT_LIST: "sales:report:list"
+} as const;
+
+export type SalesPermissionCode = (typeof SALES_PERMISSIONS)[keyof typeof SALES_PERMISSIONS];
+
+export const PRODUCTION_PERMISSIONS = {
+  ROOT: "production",
+  PROCESS_LIST: "production:process:list",
+  PROCESS_CREATE: "production:process:create",
+  PROCESS_UPDATE: "production:process:update",
+  BOM_LIST: "production:bom:list",
+  BOM_CREATE: "production:bom:create",
+  BOM_UPDATE: "production:bom:update",
+  BATCH_LIST: "production:batch:list",
+  BATCH_CREATE: "production:batch:create",
+  BATCH_UPDATE: "production:batch:update",
+  REPORT_LIST: "production:report:list",
+  REPORT_CREATE: "production:report:create",
+  SERIAL_LIST: "production:serial:list",
+  SERIAL_CREATE: "production:serial:create",
+  SERIAL_UPDATE: "production:serial:update"
+} as const;
+
+export type ProductionPermissionCode = (typeof PRODUCTION_PERMISSIONS)[keyof typeof PRODUCTION_PERMISSIONS];

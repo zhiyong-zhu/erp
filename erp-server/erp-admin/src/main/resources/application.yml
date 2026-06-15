@@ -17,9 +17,9 @@ spring:
     port: 5672
     username: guest
     password: guest
-  flyway:
+  liquibase:
     enabled: true
-    locations: classpath:db/migration
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   jackson:
     time-zone: Asia/Shanghai
 

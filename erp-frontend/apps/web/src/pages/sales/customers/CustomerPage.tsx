@@ -1,0 +1,233 @@
+import { PlusOutlined } from "@ant-design/icons";
+import {
+  ModalForm,
+  ProFormDigit,
+  ProFormSelect,
+  ProFormText,
+  ProFormTextArea
+} from "@ant-design/pro-components";
+import { SALES_PERMISSIONS } from "@erp/shared";
+import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { useEffect, useState } from "react";
+import {
+  createCustomer,
+  fetchCustomers,
+  updateCustomer
+} from "../../../api/sales";
+import { hasPermission } from "../../../store/auth";
+import type { CustomerPayload, CustomerRecord } from "../../../types/sales";
+
+const { Title, Text } = Typography;
+
+const CUSTOMER_TYPE_MAP: Record<number, string> = { 1: "企业", 2: "个人" };
+const STATUS_MAP: Record<number, { label: string; color: string }> = {
+  1: { label: "启用", color: "green" },
+  0: { label: "禁用", color: "red" }
+};
+
+export function CustomerPage() {
+  const [loading, setLoading] = useState(false);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [pageNum, setPageNum] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [keyword, setKeyword] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
+  const { message } = App.useApp();
+  const canCreate = hasPermission(SALES_PERMISSIONS.CUSTOMER_CREATE);
+  const canUpdate = hasPermission(SALES_PERMISSIONS.CUSTOMER_UPDATE);
+
+  useEffect(() => {
+    void loadCustomers();
+  }, []);
+
+  async function loadCustomers(nextPageNum = pageNum, nextPageSize = pageSize, name = keyword) {
+    setLoading(true);
+    try {
+      const data = await fetchCustomers({ pageNum: nextPageNum, pageSize: nextPageSize, name });
+      setCustomers(data.records);
+      setPageNum(data.pageNum);
+      setPageSize(data.pageSize);
+      setTotal(data.total);
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "加载客户失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreate(values: CustomerPayload) {
+    try {
+      await createCustomer(values);
+      message.success("客户创建成功");
+      setCreateOpen(false);
+      await loadCustomers(1, pageSize);
+      return true;
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "客户创建失败");
+      return false;
+    }
+  }
+
+  async function handleUpdate(values: CustomerPayload) {
+    if (!editingCustomer?.id) return false;
+    try {
+      await updateCustomer(editingCustomer.id, values);
+      message.success("客户更新成功");
+      setEditingCustomer(null);
+      await loadCustomers();
+      return true;
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "客户更新失败");
+      return false;
+    }
+  }
+
+  const columns: ColumnsType<CustomerRecord> = [
+    { title: "客户编码", dataIndex: "code", key: "code", width: 140 },
+    { title: "客户名称", dataIndex: "name", key: "name" },
+    {
+      title: "类型", dataIndex: "customerType", key: "customerType", width: 80,
+      render: (v: number) => CUSTOMER_TYPE_MAP[v] ?? "-"
+    },
+    { title: "联系人", dataIndex: "contactPerson", key: "contactPerson", width: 100 },
+    { title: "电话", dataIndex: "phone", key: "phone", width: 140 },
+    { title: "邮箱", dataIndex: "email", key: "email", width: 180 },
+    {
+      title: "信用额度", dataIndex: "creditLimit", key: "creditLimit", width: 120,
+      render: (v: number) => v != null ? `¥${v.toLocaleString()}` : "-"
+    },
+    {
+      title: "状态", dataIndex: "status", key: "status", width: 80,
+      render: (v: number) => { const s = STATUS_MAP[v]; return s ? <Tag color={s.color}>{s.label}</Tag> : "-"; }
+    },
+    {
+      title: "操作", key: "actions", width: 80,
+      render: (_, record) => (
+        <Button type="link" disabled={!canUpdate} onClick={() => setEditingCustomer(record)}>
+          编辑
+        </Button>
+      )
+    }
+  ];
+
+  return (
+    <section>
+      <div className="page-header">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>销售管理 / 客户管理</Title>
+          <Text type="secondary">维护客户档案、联系人和信用额度信息，为销售订单和应收统计提供数据支持。</Text>
+        </div>
+        <Space>
+          <Input.Search
+            allowClear
+            placeholder="搜索客户名称"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            onSearch={(value) => { setKeyword(value); void loadCustomers(1, pageSize, value); }}
+            style={{ width: 240 }}
+          />
+          <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>
+            新建客户
+          </Button>
+        </Space>
+      </div>
+
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={customers}
+        loading={loading}
+        pagination={{
+          current: pageNum, pageSize, total,
+          showSizeChanger: true,
+          showTotal: (count) => `共 ${count} 条`,
+          onChange: (nextPageNum, nextPageSize) => void loadCustomers(nextPageNum, nextPageSize)
+        }}
+      />
+
+      <CustomerForm
+        title="新建客户"
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onFinish={handleCreate}
+      />
+      <CustomerForm
+        title="编辑客户"
+        open={!!editingCustomer}
+        initialValues={
+          editingCustomer
+            ? {
+                code: editingCustomer.code,
+                name: editingCustomer.name,
+                shortName: editingCustomer.shortName ?? "",
+                customerType: editingCustomer.customerType ?? 1,
+                contactPerson: editingCustomer.contactPerson ?? "",
+                phone: editingCustomer.phone ?? "",
+                email: editingCustomer.email ?? "",
+                address: editingCustomer.address ?? "",
+                creditLimit: editingCustomer.creditLimit ?? undefined,
+                paymentTerms: editingCustomer.paymentTerms ?? undefined,
+                taxNumber: editingCustomer.taxNumber ?? "",
+                status: editingCustomer.status,
+                remark: editingCustomer.remark ?? ""
+              }
+            : undefined
+        }
+        onCancel={() => setEditingCustomer(null)}
+        onFinish={handleUpdate}
+      />
+    </section>
+  );
+}
+
+function CustomerForm({
+  title, open, initialValues, onCancel, onFinish
+}: {
+  title: string;
+  open: boolean;
+  initialValues?: Partial<CustomerPayload>;
+  onCancel: () => void;
+  onFinish: (values: CustomerPayload) => Promise<boolean>;
+}) {
+  return (
+    <ModalForm<CustomerPayload>
+      title={title}
+      open={open}
+      width={980}
+      grid
+      rowProps={{ gutter: 16 }}
+      initialValues={initialValues ?? { customerType: 1, status: 1 }}
+      modalProps={{ destroyOnClose: true, onCancel }}
+      onFinish={onFinish}
+    >
+      <ProFormText name="code" label="客户编码" rules={[{ required: true, message: "请输入客户编码" }]} colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="name" label="客户名称" rules={[{ required: true, message: "请输入客户名称" }]} colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="shortName" label="简称" colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect
+        name="customerType" label="客户类型"
+        options={[{ label: "企业", value: 1 }, { label: "个人", value: 2 }]}
+        colProps={{ xs: 24, md: 8 }}
+      />
+      <ProFormText name="contactPerson" label="联系人" colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="phone" label="电话" colProps={{ xs: 24, md: 8 }} />
+      <ProFormText name="email" label="邮箱" colProps={{ xs: 24, md: 8 }} />
+      <ProFormDigit name="creditLimit" label="信用额度" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect
+        name="paymentTerms" label="付款条件"
+        options={[{ label: "货到付款", value: 1 }, { label: "30天", value: 2 }, { label: "60天", value: 3 }, { label: "90天", value: 4 }]}
+        colProps={{ xs: 24, md: 8 }}
+      />
+      <ProFormText name="taxNumber" label="税号" colProps={{ xs: 24, md: 8 }} />
+      <ProFormSelect
+        name="status" label="状态"
+        options={[{ label: "启用", value: 1 }, { label: "禁用", value: 0 }]}
+        colProps={{ xs: 24, md: 8 }}
+      />
+      <ProFormTextArea name="address" label="地址" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
+      <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
+    </ModalForm>
+  );
+}

@@ -1,7 +1,7 @@
 import { App as AntApp } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PURCHASE_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { fetchUserInfo, refreshTokens } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
@@ -18,6 +18,11 @@ import { MaterialSafetyStockPage } from "../pages/material/safety-stock/Material
 import { SupplierManagementPage } from "../pages/material/suppliers/SupplierManagementPage";
 import { ProductCategoryPage } from "../pages/product/categories/ProductCategoryPage";
 import { ProductManagementPage } from "../pages/product/products/ProductManagementPage";
+import { ProductionBatchPage } from "../pages/production/batches/ProductionBatchPage";
+import { ProductionBomPage } from "../pages/production/boms/ProductionBomPage";
+import { ProductionProcessPage } from "../pages/production/processes/ProductionProcessPage";
+import { ProductionReportPage } from "../pages/production/reports/ProductionReportPage";
+import { SerialNumberPage } from "../pages/production/serials/SerialNumberPage";
 import { PurchaseExceptionPage } from "../pages/purchase/exceptions/PurchaseExceptionPage";
 import { PurchasePayablePage } from "../pages/purchase/payables/PurchasePayablePage";
 import { PurchaseOrderPage } from "../pages/purchase/orders/PurchaseOrderPage";
@@ -27,6 +32,12 @@ import { OperationLogPage } from "../pages/system/logs/OperationLogPage";
 import { RoleManagementPage } from "../pages/system/roles/RoleManagementPage";
 import { UserManagementPage } from "../pages/system/users/UserManagementPage";
 import { clearAuth, getAuthState, saveTokens, saveUser, subscribeAuth } from "../store/auth";
+import { CustomerPage } from "../pages/sales/customers/CustomerPage";
+import { SaleOrderPage } from "../pages/sales/orders/SaleOrderPage";
+import { SaleReturnPage } from "../pages/sales/returns/SaleReturnPage";
+import { ShippingPage } from "../pages/sales/shipping/ShippingPage";
+import { SaleReceivablePage } from "../pages/sales/receivables/SaleReceivablePage";
+import { EcommerceShopPage } from "../pages/sales/ecommerce/EcommerceShopPage";
 
 function resolveDefaultRoute() {
   const permissions = getAuthState().user?.permissions ?? [];
@@ -51,6 +62,21 @@ function resolveDefaultRoute() {
   if (permissions.includes(PRODUCT_PERMISSIONS.CATEGORY_LIST)) {
     return "/product/categories";
   }
+  if (permissions.includes(PRODUCTION_PERMISSIONS.PROCESS_LIST)) {
+    return "/production/processes";
+  }
+  if (permissions.includes(PRODUCTION_PERMISSIONS.BOM_LIST)) {
+    return "/production/boms";
+  }
+  if (permissions.includes(PRODUCTION_PERMISSIONS.BATCH_LIST)) {
+    return "/production/batches";
+  }
+  if (permissions.includes(PRODUCTION_PERMISSIONS.REPORT_LIST)) {
+    return "/production/reports";
+  }
+  if (permissions.includes(PRODUCTION_PERMISSIONS.SERIAL_LIST)) {
+    return "/production/serials";
+  }
   if (permissions.includes(PURCHASE_PERMISSIONS.ORDER_LIST)) {
     return "/purchase/orders";
   }
@@ -59,6 +85,21 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(PURCHASE_PERMISSIONS.EXCEPTION_LIST)) {
     return "/purchase/exceptions";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.ORDER_LIST)) {
+    return "/sales/orders";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.CUSTOMER_LIST)) {
+    return "/sales/customers";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.RETURN_LIST)) {
+    return "/sales/returns";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.SHIPPING_LIST)) {
+    return "/sales/shipping";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.RECEIVABLE_LIST)) {
+    return "/sales/receivables";
   }
   if (permissions.includes(MATERIAL_PERMISSIONS.MATERIAL_LIST)) {
     return "/material/materials";
@@ -135,6 +176,11 @@ export function AppRouter() {
             <Route path="/system/logs" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.LOG_LIST}><OperationLogPage /></PermissionGuard>} />
             <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
             <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />
+            <Route path="/production/processes" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.PROCESS_LIST}><ProductionProcessPage /></PermissionGuard>} />
+            <Route path="/production/boms" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.BOM_LIST}><ProductionBomPage /></PermissionGuard>} />
+            <Route path="/production/batches" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.BATCH_LIST}><ProductionBatchPage /></PermissionGuard>} />
+            <Route path="/production/reports" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.REPORT_LIST}><ProductionReportPage /></PermissionGuard>} />
+            <Route path="/production/serials" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.SERIAL_LIST}><SerialNumberPage /></PermissionGuard>} />
             <Route path="/purchase/orders" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.ORDER_LIST}><PurchaseOrderPage /></PermissionGuard>} />
             <Route path="/purchase/payables" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.PAYABLE_LIST}><PurchasePayablePage /></PermissionGuard>} />
             <Route path="/purchase/exceptions" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.EXCEPTION_LIST}><PurchaseExceptionPage /></PermissionGuard>} />
@@ -148,6 +194,12 @@ export function AppRouter() {
             <Route path="/material/suppliers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.SUPPLIER_LIST}><SupplierManagementPage /></PermissionGuard>} />
             <Route path="/inventory/receipts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryReceiptPage /></PermissionGuard>} />
             <Route path="/inventory/transactions" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryTransactionPage /></PermissionGuard>} />
+            <Route path="/sales/customers" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.CUSTOMER_LIST}><CustomerPage /></PermissionGuard>} />
+            <Route path="/sales/orders" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.ORDER_LIST}><SaleOrderPage /></PermissionGuard>} />
+            <Route path="/sales/returns" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.RETURN_LIST}><SaleReturnPage /></PermissionGuard>} />
+            <Route path="/sales/shipping" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.SHIPPING_LIST}><ShippingPage /></PermissionGuard>} />
+            <Route path="/sales/receivables" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.RECEIVABLE_LIST}><SaleReceivablePage /></PermissionGuard>} />
+            <Route path="/sales/ecommerce" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.ORDER_LIST}><EcommerceShopPage /></PermissionGuard>} />
           </Route>
         </Routes>
       </Router>
