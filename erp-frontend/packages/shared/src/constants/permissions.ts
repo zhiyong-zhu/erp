@@ -97,6 +97,8 @@ export const SALES_PERMISSIONS = {
   SHIPPING_LIST: "sales:shipping:list",
   SHIPPING_UPDATE: "sales:shipping:update",
   RECEIVABLE_LIST: "sales:receivable:list",
+  EXCEPTION_LIST: "sales:exception:list",
+  EXCEPTION_UPDATE: "sales:exception:update",
   REPORT_LIST: "sales:report:list"
 } as const;
 

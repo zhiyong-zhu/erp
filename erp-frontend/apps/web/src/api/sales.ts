@@ -8,6 +8,8 @@ import type {
   SaleOrderCreatePayload,
   SaleOrderRecord,
   SaleOrderStatusPayload,
+  SaleExceptionHandlePayload,
+  SaleExceptionRecord,
   SaleReceivableStatRecord,
   SaleReturnCreatePayload,
   SaleReturnRecord,
@@ -109,6 +111,17 @@ export async function fetchShippingOrderDetail(id: string): Promise<ShippingReco
 // ========== 应收统计 ==========
 export async function fetchSaleReceivables(query: PageQuery): Promise<PageResult<SaleReceivableStatRecord>> {
   const response = await http.get<ApiResponse<PageResult<SaleReceivableStatRecord>>>("/sales/receivables", { params: query });
+  return response.data.data;
+}
+
+// ========== 销售异常 ==========
+export async function fetchSaleExceptions(query: PageQuery): Promise<PageResult<SaleExceptionRecord>> {
+  const response = await http.get<ApiResponse<PageResult<SaleExceptionRecord>>>("/sales/exceptions", { params: query });
+  return response.data.data;
+}
+
+export async function handleSaleException(id: string, payload: SaleExceptionHandlePayload): Promise<SaleExceptionRecord> {
+  const response = await http.post<ApiResponse<SaleExceptionRecord>>(`/sales/exceptions/${id}/handle`, payload);
   return response.data.data;
 }
 

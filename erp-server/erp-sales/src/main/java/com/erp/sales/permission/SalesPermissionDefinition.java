@@ -16,6 +16,8 @@ public enum SalesPermissionDefinition implements PermissionDefinition {
     SHIPPING_LIST(SalesPermissionCodes.SHIPPING_LIST, "发货列表", 2, "/sales/shipping", "car", 440, ROOT.code, true),
     SHIPPING_UPDATE(SalesPermissionCodes.SHIPPING_UPDATE, "编辑发货", 3, null, null, 441, SHIPPING_LIST.code, true),
     RECEIVABLE_LIST(SalesPermissionCodes.RECEIVABLE_LIST, "应收统计", 2, "/sales/receivables", "wallet", 450, ROOT.code, true),
+    EXCEPTION_LIST(SalesPermissionCodes.EXCEPTION_LIST, "销售异常", 2, "/sales/exceptions", "warning", 455, ROOT.code, true),
+    EXCEPTION_UPDATE(SalesPermissionCodes.EXCEPTION_UPDATE, "处理销售异常", 3, null, null, 456, EXCEPTION_LIST.code, true),
     REPORT_LIST(SalesPermissionCodes.REPORT_LIST, "销售报表", 2, "/sales/reports", "bar-chart", 460, ROOT.code, true);
 
     private final String code;

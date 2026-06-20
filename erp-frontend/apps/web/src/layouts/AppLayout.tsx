@@ -9,6 +9,7 @@ import {
   ShoppingOutlined,
   TeamOutlined,
   ToolOutlined,
+  WarningOutlined,
   WalletOutlined
 } from "@ant-design/icons";
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
@@ -188,6 +189,9 @@ export function AppLayout() {
           hasPermission(SALES_PERMISSIONS.RECEIVABLE_LIST)
             ? { key: "/sales/receivables", icon: <WalletOutlined />, label: "应收统计", onClick: () => navigate("/sales/receivables") }
             : null,
+          hasPermission(SALES_PERMISSIONS.EXCEPTION_LIST)
+            ? { key: "/sales/exceptions", icon: <WarningOutlined />, label: "销售异常", onClick: () => navigate("/sales/exceptions") }
+            : null,
           hasPermission(SALES_PERMISSIONS.ORDER_LIST)
             ? { key: "/sales/ecommerce", icon: <ShoppingOutlined />, label: "电商平台", onClick: () => navigate("/sales/ecommerce") }
             : null
@@ -260,6 +264,8 @@ export function AppLayout() {
     selectedKeys = ["/sales/shipping"];
   } else if (location.pathname.startsWith("/sales/receivables")) {
     selectedKeys = ["/sales/receivables"];
+  } else if (location.pathname.startsWith("/sales/exceptions")) {
+    selectedKeys = ["/sales/exceptions"];
   } else if (location.pathname.startsWith("/sales/ecommerce")) {
     selectedKeys = ["/sales/ecommerce"];
   }

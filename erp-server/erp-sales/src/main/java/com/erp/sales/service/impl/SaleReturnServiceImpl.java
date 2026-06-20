@@ -22,6 +22,7 @@ import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnItemMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
+import com.erp.sales.service.SaleExceptionService;
 import com.erp.sales.service.SaleReturnService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -46,6 +47,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
     private final MaterialMapper materialMapper;
     private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
+    private final SaleExceptionService saleExceptionService;
 
     public SaleReturnServiceImpl(
             SaleReturnMapper saleReturnMapper,
@@ -54,7 +56,8 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             SaleOrderItemMapper saleOrderItemMapper,
             MaterialMapper materialMapper,
             ProductionProductStockMapper productStockMapper,
-            InventoryTransactionMapper inventoryTransactionMapper
+            InventoryTransactionMapper inventoryTransactionMapper,
+            SaleExceptionService saleExceptionService
     ) {
         this.saleReturnMapper = saleReturnMapper;
         this.saleReturnItemMapper = saleReturnItemMapper;
@@ -63,6 +66,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         this.materialMapper = materialMapper;
         this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
+        this.saleExceptionService = saleExceptionService;
     }
 
     @Override
@@ -158,6 +162,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
                     throw new BizException(10004, "当前退货单状态不允许驳回");
                 }
                 saleReturn.setStatus("REJECTED");
+                createReturnExceptions(saleReturn, "RETURN_REJECTED", remark);
                 // Restore order status
                 SaleOrder order = saleOrderMapper.selectById(saleReturn.getSaleOrderId());
                 if (order != null) {
@@ -171,7 +176,12 @@ public class SaleReturnServiceImpl implements SaleReturnService {
                 ensureStatus(saleReturn, "APPROVED");
                 saleReturn.setStatus("INSPECTED");
                 // Inventory return-in: create SALE_RETURN_IN transactions
-                createReturnInTransactions(saleReturn);
+                try {
+                    createReturnInTransactions(saleReturn);
+                } catch (BizException ex) {
+                    createReturnExceptions(saleReturn, "RETURN_INSPECTION", ex.getMessage());
+                    throw ex;
+                }
             }
             case "refund" -> {
                 ensureStatus(saleReturn, "INSPECTED");
@@ -249,6 +259,17 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             txn.setMaterialName(material.getName());
             txn.setBalanceAfter(newStock);
             inventoryTransactionMapper.insert(txn);
+        }
+    }
+
+    private void createReturnExceptions(SaleReturn saleReturn, String exceptionType, String description) {
+        List<SaleReturnItem> items = saleReturnItemMapper.selectBySaleReturnId(saleReturn.getId());
+        if (items.isEmpty()) {
+            saleExceptionService.createReturnException(saleReturn, null, exceptionType, description);
+            return;
+        }
+        for (SaleReturnItem item : items) {
+            saleExceptionService.createReturnException(saleReturn, item, exceptionType, description);
         }
     }
 

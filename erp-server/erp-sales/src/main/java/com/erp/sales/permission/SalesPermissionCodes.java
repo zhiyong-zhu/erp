@@ -14,6 +14,8 @@ public final class SalesPermissionCodes {
     public static final String SHIPPING_LIST = "sales:shipping:list";
     public static final String SHIPPING_UPDATE = "sales:shipping:update";
     public static final String RECEIVABLE_LIST = "sales:receivable:list";
+    public static final String EXCEPTION_LIST = "sales:exception:list";
+    public static final String EXCEPTION_UPDATE = "sales:exception:update";
     public static final String REPORT_LIST = "sales:report:list";
 
     private SalesPermissionCodes() {

@@ -28,6 +28,7 @@ import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
+import com.erp.sales.service.SaleExceptionService;
 import com.erp.sales.service.SaleOrderService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -53,6 +54,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private final MaterialMapper materialMapper;
     private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
+    private final SaleExceptionService saleExceptionService;
 
     public SaleOrderServiceImpl(
             SaleOrderMapper saleOrderMapper,
@@ -62,7 +64,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             CustomerMapper customerMapper,
             MaterialMapper materialMapper,
             ProductionProductStockMapper productStockMapper,
-            InventoryTransactionMapper inventoryTransactionMapper
+            InventoryTransactionMapper inventoryTransactionMapper,
+            SaleExceptionService saleExceptionService
     ) {
         this.saleOrderMapper = saleOrderMapper;
         this.saleOrderItemMapper = saleOrderItemMapper;
@@ -72,6 +75,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         this.materialMapper = materialMapper;
         this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
+        this.saleExceptionService = saleExceptionService;
     }
 
     @Override
@@ -280,7 +284,12 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             saleOrderItemMapper.updateById(item);
 
             // Inventory outbound: create SALE_OUT transaction
-            createOutboundTransaction(order, item);
+            try {
+                createOutboundTransaction(order, item);
+            } catch (BizException ex) {
+                saleExceptionService.createOrderException(order, item, "SHIPMENT", ex.getMessage());
+                throw ex;
+            }
         }
 
         order.setStatus("SHIPPED");

@@ -175,6 +175,30 @@ export interface SaleReceivableStatRecord {
   returnCount?: number | null;
 }
 
+// ========== 销售异常 ==========
+export interface SaleExceptionRecord {
+  id: string;
+  exceptionNo: string;
+  saleOrderId?: string | null;
+  saleOrderItemId?: string | null;
+  saleReturnId?: string | null;
+  saleReturnItemId?: string | null;
+  customerName?: string | null;
+  skuCode?: string | null;
+  productName?: string | null;
+  exceptionType: string;
+  status: string;
+  description?: string | null;
+  resolution?: string | null;
+  createdAt?: string | null;
+  handledAt?: string | null;
+}
+
+export interface SaleExceptionHandlePayload {
+  action: "resolve" | "close";
+  resolution?: string;
+}
+
 // ========== 电商店铺 ==========
 export interface EcommerceShopRecord extends BaseRecord {
   id: string;
