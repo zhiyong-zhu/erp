@@ -9,6 +9,8 @@ import com.erp.inventory.domain.entity.InventoryTransaction;
 import com.erp.inventory.mapper.InventoryTransactionMapper;
 import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
+import com.erp.production.domain.entity.ProductionProductStock;
+import com.erp.production.mapper.ProductionProductStockMapper;
 import com.erp.sales.domain.dto.SaleOrderCreateRequest;
 import com.erp.sales.domain.dto.SaleOrderStatusRequest;
 import com.erp.sales.domain.dto.ShippingOrderRequest;
@@ -46,6 +48,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private final ShippingOrderMapper shippingOrderMapper;
     private final CustomerMapper customerMapper;
     private final MaterialMapper materialMapper;
+    private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
 
     public SaleOrderServiceImpl(
@@ -54,6 +57,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             ShippingOrderMapper shippingOrderMapper,
             CustomerMapper customerMapper,
             MaterialMapper materialMapper,
+            ProductionProductStockMapper productStockMapper,
             InventoryTransactionMapper inventoryTransactionMapper
     ) {
         this.saleOrderMapper = saleOrderMapper;
@@ -61,6 +65,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         this.shippingOrderMapper = shippingOrderMapper;
         this.customerMapper = customerMapper;
         this.materialMapper = materialMapper;
+        this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
     }
 
@@ -340,20 +345,14 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     // ========== Inventory outbound integration ==========
 
     private void createOutboundTransaction(SaleOrder order, SaleOrderItem item) {
-        // Try to find a Material matching the SKU code
-        Material material = null;
-        if (item.getSkuCode() != null) {
-            List<Material> candidates = materialMapper.selectList(
-                    new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
-            if (!candidates.isEmpty()) {
-                material = candidates.get(0);
-            }
+        BigDecimal quantity = safe(item.getQuantity());
+        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BizException(10004, "发货数量必须大于0");
         }
-
         InventoryTransaction txn = new InventoryTransaction();
         txn.setId(UUID.randomUUID());
         txn.setTransactionType("SALE_OUT");
-        txn.setQuantity(item.getQuantity().negate()); // negative for outbound
+        txn.setQuantity(quantity.negate());
         txn.setSourceType("SALE");
         txn.setSourceOrderId(order.getId());
         txn.setSourceOrderNo(order.getOrderNo());
@@ -362,24 +361,67 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         txn.setCreatedBy(SecurityUtils.getUserId());
         txn.setCreatedAt(OffsetDateTime.now());
 
-        if (material != null) {
-            txn.setMaterialId(material.getId());
-            txn.setMaterialCode(material.getCode());
-            txn.setMaterialName(material.getName());
-            BigDecimal newStock = safe(material.getCurrentStock()).subtract(item.getQuantity());
+        ProductionProductStock productStock = findProductStock(item);
+        if (productStock != null) {
+            BigDecimal currentStock = safe(productStock.getCurrentStock());
+            if (currentStock.compareTo(quantity) < 0) {
+                throw new BizException(10004, "成品库存不足: " + productStock.getProductName());
+            }
+            BigDecimal newStock = currentStock.subtract(quantity);
+            productStock.setCurrentStock(newStock);
+            productStock.setUpdatedBy(SecurityUtils.getUserId());
+            productStock.setUpdatedAt(OffsetDateTime.now());
+            productStockMapper.updateById(productStock);
+            txn.setMaterialId(productStock.getProductId());
+            txn.setMaterialCode(productStock.getProductCode());
+            txn.setMaterialName(productStock.getProductName());
             txn.setBalanceAfter(newStock);
-            material.setCurrentStock(newStock);
-            materialMapper.updateById(material);
-        } else {
-            // SKU-level outbound without material mapping
-            txn.setMaterialCode(item.getSkuCode());
-            txn.setMaterialName(item.getProductName());
-            txn.setBalanceAfter(BigDecimal.ZERO);
-            log.info("SKU {} has no corresponding material record, outbound recorded without stock update",
-                    item.getSkuCode());
+            inventoryTransactionMapper.insert(txn);
+            return;
         }
 
+        Material material = findMaterialFallback(item);
+        if (material == null) {
+            throw new BizException(10004, "未找到可扣减库存的成品或原料: " + item.getSkuCode());
+        }
+        BigDecimal currentStock = safe(material.getCurrentStock());
+        if (currentStock.compareTo(quantity) < 0) {
+            throw new BizException(10004, "原料库存不足: " + material.getName());
+        }
+        BigDecimal newStock = currentStock.subtract(quantity);
+        material.setCurrentStock(newStock);
+        material.setUpdatedBy(SecurityUtils.getUserId());
+        material.setUpdatedAt(OffsetDateTime.now());
+        materialMapper.updateById(material);
+        txn.setMaterialId(material.getId());
+        txn.setMaterialCode(material.getCode());
+        txn.setMaterialName(material.getName());
+        txn.setBalanceAfter(newStock);
         inventoryTransactionMapper.insert(txn);
+    }
+
+    private ProductionProductStock findProductStock(SaleOrderItem item) {
+        if (item.getSkuId() != null) {
+            ProductionProductStock byProductId = productStockMapper.selectOne(
+                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, item.getSkuId()));
+            if (byProductId != null) {
+                return byProductId;
+            }
+        }
+        if (item.getSkuCode() != null && !item.getSkuCode().isBlank()) {
+            return productStockMapper.selectOne(
+                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductCode, item.getSkuCode()));
+        }
+        return null;
+    }
+
+    private Material findMaterialFallback(SaleOrderItem item) {
+        if (item.getSkuCode() == null || item.getSkuCode().isBlank()) {
+            return null;
+        }
+        List<Material> candidates = materialMapper.selectList(
+                new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
+        return candidates.isEmpty() ? null : candidates.get(0);
     }
 
     // ========== Helpers ==========
