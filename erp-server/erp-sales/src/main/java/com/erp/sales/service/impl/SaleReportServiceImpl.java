@@ -1,6 +1,7 @@
 package com.erp.sales.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.erp.sales.domain.SaleOrderStatusMachine;
 import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
 import com.erp.sales.domain.entity.SaleReturn;
@@ -37,7 +38,7 @@ public class SaleReportServiceImpl implements SaleReportService {
     public SaleReportVO summary() {
         List<SaleOrder> orders = saleOrderMapper.selectList(
                 new LambdaQueryWrapper<SaleOrder>()
-                        .notIn(SaleOrder::getStatus, List.of("PENDING_CONFIRM", "CANCELLED"))
+                        .notIn(SaleOrder::getStatus, List.of(SaleOrderStatusMachine.PENDING_CONFIRM, SaleOrderStatusMachine.CANCELLED))
         );
         List<SaleReturn> returns = saleReturnMapper.selectList(
                 new LambdaQueryWrapper<SaleReturn>()

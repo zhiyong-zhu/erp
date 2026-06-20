@@ -11,6 +11,7 @@ import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
 import com.erp.production.domain.entity.ProductionProductStock;
 import com.erp.production.mapper.ProductionProductStockMapper;
+import com.erp.sales.domain.SaleOrderStatusMachine;
 import com.erp.sales.domain.dto.SaleOrderCreateRequest;
 import com.erp.sales.domain.dto.SaleOrderStatusRequest;
 import com.erp.sales.domain.dto.ShippingOrderRequest;
@@ -110,7 +111,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         order.setOrderSource(request.getOrderSource());
         order.setPlatformOrderNo(request.getPlatformOrderNo());
         order.setPlatformData(request.getPlatformData());
-        order.setStatus("PENDING_CONFIRM");
+        order.setStatus(SaleOrderStatusMachine.PENDING_CONFIRM);
         order.setDiscountAmount(safe(request.getDiscountAmount()));
         order.setFreightAmount(safe(request.getFreightAmount()));
         order.setPaidAmount(BigDecimal.ZERO);
@@ -160,7 +161,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     @Transactional
     public SaleOrderVO updateDraft(UUID id, SaleOrderCreateRequest request) {
         SaleOrder order = getOrder(id);
-        ensureStatus(order, "PENDING_CONFIRM");
+        SaleOrderStatusMachine.ensureCanEdit(order.getStatus());
 
         Customer customer = customerMapper.selectById(request.getCustomerId());
         if (customer == null) {
@@ -222,27 +223,10 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     public SaleOrderVO changeStatus(UUID id, SaleOrderStatusRequest request) {
         SaleOrder order = getOrder(id);
         String action = request.getAction();
-        switch (action) {
-            case "confirm" -> {
-                ensureStatus(order, "PENDING_CONFIRM");
-                order.setStatus("CONFIRMED");
-            }
-            case "cancel" -> {
-                ensureStatus(order, "PENDING_CONFIRM");
-                order.setStatus("CANCELLED");
-            }
-            case "complete" -> {
-                ensureStatus(order, "SHIPPED");
-                order.setStatus("COMPLETED");
-                order.setCompletedAt(OffsetDateTime.now());
-            }
-            case "requestReturn" -> {
-                if (!"SHIPPED".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())) {
-                    throw new BizException(10004, "当前订单状态不允许申请退货");
-                }
-                order.setStatus("RETURN_REQUEST");
-            }
-            default -> throw new BizException(10004, "不支持的销售订单操作: " + action);
+        String nextStatus = SaleOrderStatusMachine.next(order.getStatus(), action);
+        order.setStatus(nextStatus);
+        if (SaleOrderStatusMachine.COMPLETED.equals(nextStatus)) {
+            order.setCompletedAt(OffsetDateTime.now());
         }
         if (request.getRemark() != null && !request.getRemark().isBlank()) {
             order.setRemark(request.getRemark());
@@ -257,9 +241,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     @Transactional
     public SaleOrderVO ship(UUID id, ShippingOrderRequest request) {
         SaleOrder order = getOrder(id);
-        if (!"CONFIRMED".equals(order.getStatus()) && !"PENDING_SHIP".equals(order.getStatus())) {
-            throw new BizException(10004, "当前订单状态不允许发货");
-        }
+        SaleOrderStatusMachine.ensureCanShip(order.getStatus());
 
         // Create shipping order
         ShippingOrder shipping = new ShippingOrder();
@@ -268,7 +250,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         shipping.setCarrierCode(request.getCarrierCode());
         shipping.setCarrierName(request.getCarrierName());
         shipping.setTrackingNumber(request.getTrackingNumber());
-        shipping.setStatus("SHIPPED");
+        shipping.setStatus(SaleOrderStatusMachine.SHIPPED);
         shipping.setShippedAt(OffsetDateTime.now());
         shipping.setRemark(request.getRemark());
         shipping.setCreatedBy(SecurityUtils.getUserId());
@@ -292,7 +274,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             }
         }
 
-        order.setStatus("SHIPPED");
+        order.setStatus(SaleOrderStatusMachine.SHIPPED);
         order.setShippedAt(OffsetDateTime.now());
         order.setUpdatedBy(SecurityUtils.getUserId());
         order.setUpdatedAt(OffsetDateTime.now());
@@ -323,7 +305,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     public PageVO<SaleReceivableStatVO> listReceivableStats(long pageNum, long pageSize) {
         List<SaleOrder> orders = saleOrderMapper.selectList(
                 new LambdaQueryWrapper<SaleOrder>()
-                        .notIn(SaleOrder::getStatus, List.of("PENDING_CONFIRM", "CANCELLED"))
+                        .notIn(SaleOrder::getStatus, List.of(SaleOrderStatusMachine.PENDING_CONFIRM, SaleOrderStatusMachine.CANCELLED))
         );
 
         Map<UUID, List<SaleOrder>> ordersByCustomer = orders.stream()
@@ -459,12 +441,6 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             throw new BizException(10006, "销售订单不存在");
         }
         return order;
-    }
-
-    private void ensureStatus(SaleOrder order, String expectedStatus) {
-        if (!expectedStatus.equals(order.getStatus())) {
-            throw new BizException(10004, "当前订单状态不允许该操作（当前: " + order.getStatus() + "）");
-        }
     }
 
     private SaleOrderVO toVO(SaleOrder order) {

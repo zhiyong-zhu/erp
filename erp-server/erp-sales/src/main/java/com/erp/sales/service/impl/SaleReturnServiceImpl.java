@@ -11,6 +11,7 @@ import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
 import com.erp.production.domain.entity.ProductionProductStock;
 import com.erp.production.mapper.ProductionProductStockMapper;
+import com.erp.sales.domain.SaleOrderStatusMachine;
 import com.erp.sales.domain.dto.SaleReturnRequest;
 import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
@@ -91,9 +92,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         if (order == null) {
             throw new BizException(10004, "销售订单不存在");
         }
-        if (!"SHIPPED".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus()) && !"RETURN_REQUEST".equals(order.getStatus())) {
-            throw new BizException(10004, "当前订单状态不允许退货");
-        }
+        SaleOrderStatusMachine.ensureCanCreateReturn(order.getStatus());
 
         SaleReturn saleReturn = new SaleReturn();
         saleReturn.setId(UUID.randomUUID());
@@ -140,7 +139,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         saleReturnMapper.insert(saleReturn);
 
         // Update order status to RETURNING
-        order.setStatus("RETURNING");
+        order.setStatus(SaleOrderStatusMachine.RETURNING);
         order.setUpdatedBy(SecurityUtils.getUserId());
         order.setUpdatedAt(OffsetDateTime.now());
         saleOrderMapper.updateById(order);
@@ -166,7 +165,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
                 // Restore order status
                 SaleOrder order = saleOrderMapper.selectById(saleReturn.getSaleOrderId());
                 if (order != null) {
-                    order.setStatus("COMPLETED");
+                    order.setStatus(SaleOrderStatusMachine.COMPLETED);
                     order.setUpdatedBy(SecurityUtils.getUserId());
                     order.setUpdatedAt(OffsetDateTime.now());
                     saleOrderMapper.updateById(order);
@@ -193,7 +192,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
                 // Update order status to RETURNED
                 SaleOrder order = saleOrderMapper.selectById(saleReturn.getSaleOrderId());
                 if (order != null) {
-                    order.setStatus("RETURNED");
+                    order.setStatus(SaleOrderStatusMachine.RETURNED);
                     order.setUpdatedBy(SecurityUtils.getUserId());
                     order.setUpdatedAt(OffsetDateTime.now());
                     saleOrderMapper.updateById(order);

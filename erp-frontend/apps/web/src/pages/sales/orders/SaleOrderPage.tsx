@@ -54,6 +54,43 @@ const ORDER_SOURCE_MAP: Record<string, string> = {
   ALIBABA_1688: "1688"
 };
 
+type SaleOrderAction = SaleOrderStatusPayload["action"];
+
+const ACTION_LABELS: Record<SaleOrderAction, string> = {
+  confirm: "确认",
+  cancel: "取消",
+  complete: "完成",
+  requestReturn: "申请退货"
+};
+
+function canEditOrder(status: string) {
+  return status === "PENDING_CONFIRM";
+}
+
+function canConfirmOrder(status: string) {
+  return status === "PENDING_CONFIRM";
+}
+
+function canCancelOrder(status: string) {
+  return status === "PENDING_CONFIRM";
+}
+
+function canShipOrder(status: string) {
+  return status === "CONFIRMED" || status === "PENDING_SHIP";
+}
+
+function canCompleteOrder(status: string) {
+  return status === "SHIPPED";
+}
+
+function canRequestReturn(status: string) {
+  return status === "SHIPPED" || status === "COMPLETED";
+}
+
+function canPrintDeliveryNote(status: string) {
+  return status === "SHIPPED" || status === "COMPLETED" || status === "RETURN_REQUEST" || status === "RETURNING" || status === "RETURNED";
+}
+
 export function SaleOrderPage() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<SaleOrderRecord[]>([]);
@@ -141,7 +178,7 @@ export function SaleOrderPage() {
     }
   }
 
-  async function handleStatus(record: SaleOrderRecord, action: SaleOrderStatusPayload["action"]) {
+  async function handleStatus(record: SaleOrderRecord, action: SaleOrderAction) {
     try {
       await changeSaleOrderStatus(record.id, { action });
       message.success("状态已更新");
@@ -149,6 +186,16 @@ export function SaleOrderPage() {
     } catch (err: any) {
       message.error(err?.response?.data?.message ?? err?.message ?? "状态更新失败");
     }
+  }
+
+  function confirmStatusChange(record: SaleOrderRecord, action: SaleOrderAction) {
+    Modal.confirm({
+      title: `确认${ACTION_LABELS[action]}订单？`,
+      content: `订单号：${record.orderNo}`,
+      okText: "确认",
+      cancelText: "取消",
+      onOk: () => handleStatus(record, action)
+    });
   }
 
   async function handleShip(values: ShippingOrderPayload) {
@@ -196,26 +243,27 @@ export function SaleOrderPage() {
       render: (_, record) => (
         <Space size="small" wrap>
           <Button type="link" onClick={() => void openDetail(record)}>详情</Button>
-          {record.status === "PENDING_CONFIRM" && (
-            <>
-              <Button type="link" icon={<EditOutlined />} disabled={!canUpdate} onClick={() => void openEdit(record)}>编辑</Button>
-              <Button type="link" icon={<CheckOutlined />} disabled={!canUpdate} onClick={() => void handleStatus(record, "confirm")}>确认</Button>
-              <Button type="link" disabled={!canUpdate} onClick={() => void handleStatus(record, "cancel")}>取消</Button>
-            </>
+          {canEditOrder(record.status) && (
+            <Button type="link" icon={<EditOutlined />} disabled={!canUpdate} onClick={() => void openEdit(record)}>编辑</Button>
           )}
-          {(record.status === "CONFIRMED" || record.status === "PENDING_SHIP") && (
+          {canConfirmOrder(record.status) && (
+            <Button type="link" icon={<CheckOutlined />} disabled={!canUpdate} onClick={() => confirmStatusChange(record, "confirm")}>确认</Button>
+          )}
+          {canCancelOrder(record.status) && (
+            <Button type="link" disabled={!canUpdate} onClick={() => confirmStatusChange(record, "cancel")}>取消</Button>
+          )}
+          {canShipOrder(record.status) && (
             <Button type="link" icon={<SendOutlined />} disabled={!canShip} onClick={() => void openShip(record)}>发货</Button>
           )}
-          {record.status === "SHIPPED" && (
+          {canCompleteOrder(record.status) && (
             <>
-              <Button type="link" disabled={!canUpdate} onClick={() => void handleStatus(record, "complete")}>完成</Button>
-              <Button type="link" icon={<PrinterOutlined />} onClick={() => handlePrintDeliveryNote(record.id)}>出库单</Button>
+              <Button type="link" disabled={!canUpdate} onClick={() => confirmStatusChange(record, "complete")}>完成</Button>
             </>
           )}
-          {(record.status === "SHIPPED" || record.status === "COMPLETED") && (
-            <Button type="link" icon={<RollbackOutlined />} disabled={!canUpdate} onClick={() => void handleStatus(record, "requestReturn")}>申请退货</Button>
+          {canRequestReturn(record.status) && (
+            <Button type="link" icon={<RollbackOutlined />} disabled={!canUpdate} onClick={() => confirmStatusChange(record, "requestReturn")}>申请退货</Button>
           )}
-          {record.status === "COMPLETED" && (
+          {canPrintDeliveryNote(record.status) && (
             <Button type="link" icon={<PrinterOutlined />} onClick={() => handlePrintDeliveryNote(record.id)}>出库单</Button>
           )}
         </Space>
