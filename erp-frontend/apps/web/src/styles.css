@@ -1,20 +1,36 @@
 html,
 body,
 #root {
+  height: 100%;
   margin: 0;
-  min-height: 100%;
+  overflow: hidden;
 }
 
 body {
   font-family: "Segoe UI", "PingFang SC", sans-serif;
 }
 
+.erp-app-shell {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .erp-sider {
   border-inline-end: 1px solid rgba(15, 23, 42, 0.06);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.erp-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .erp-brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 12px;
   padding: 20px 16px 16px;
@@ -35,8 +51,22 @@ body {
   margin: 0;
 }
 
+.erp-menu-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.erp-main-shell {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .erp-header {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   min-height: 72px;
   height: auto;
@@ -52,6 +82,9 @@ body {
 }
 
 .erp-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   padding: 24px;
 }
 

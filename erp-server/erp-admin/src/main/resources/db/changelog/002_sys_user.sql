@@ -29,16 +29,3 @@ SELECT gen_random_uuid(),
        1,
        FALSE
 WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username = 'admin');
-
---changeset erp:v1-0-1-add-department-and-system-permissions-002 splitStatements:false
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'fk_sys_user_department'
-    ) THEN
-        ALTER TABLE sys_user
-            ADD CONSTRAINT fk_sys_user_department
-            FOREIGN KEY (department_id) REFERENCES sys_department(id)
-            NOT VALID;
-    END IF;
-END $$;

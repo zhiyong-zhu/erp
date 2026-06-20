@@ -276,7 +276,7 @@ export function AppLayout() {
   }
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className="erp-app-shell">
       <Sider breakpoint="lg" collapsedWidth={72} width={240} theme="light" className="erp-sider">
         <div className="erp-brand">
           <div className="erp-brand-mark">ERP</div>
@@ -285,9 +285,9 @@ export function AppLayout() {
             <Text type="secondary">Management Console</Text>
           </div>
         </div>
-        <Menu mode="inline" defaultOpenKeys={["/system"]} selectedKeys={selectedKeys} items={menuItems} />
+        <Menu className="erp-menu-scroll" mode="inline" defaultOpenKeys={["/system"]} selectedKeys={selectedKeys} items={menuItems} />
       </Sider>
-      <Layout>
+      <Layout className="erp-main-shell">
         <Header className="erp-header erp-header-between">
           <div>
             <Title level={4} style={{ margin: 0 }}>ERP 管理后台</Title>

@@ -14,6 +14,19 @@ CREATE TABLE IF NOT EXISTS sys_department (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+--changeset erp:v1-0-1-add-department-and-system-permissions-002 splitStatements:false
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_sys_user_department'
+    ) THEN
+        ALTER TABLE sys_user
+            ADD CONSTRAINT fk_sys_user_department
+            FOREIGN KEY (department_id) REFERENCES sys_department(id)
+            NOT VALID;
+    END IF;
+END $$;
+
 --changeset erp:v1-0-1-add-department-and-system-permissions-003
 INSERT INTO sys_department (id, parent_id, name, code, leader, sort_order, status)
 SELECT gen_random_uuid(), NULL, '总部', 'HQ', '系统管理员', 0, 1
