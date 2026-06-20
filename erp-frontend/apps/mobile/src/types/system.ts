@@ -26,6 +26,7 @@ export interface RoleRecord {
   description?: string | null;
   dataScope: number;
   status: number;
+  permissionIds?: string[];
 }
 
 export interface RolePayload {
@@ -33,4 +34,5 @@ export interface RolePayload {
   code: string;
   description?: string;
   dataScope?: number;
+  permissionIds?: string[];
 }

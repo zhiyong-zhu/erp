@@ -2,7 +2,16 @@ import React, { FormEvent, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { APP_NAME, formatTitle } from "@erp/shared";
 import { fetchUserInfo, login, logout } from "./api/auth";
-import { createDepartment, createRole, fetchDepartments, fetchRoles } from "./api/system";
+import {
+  createDepartment,
+  createRole,
+  fetchDepartments,
+  fetchRoles,
+  updateDepartment,
+  updateDepartmentStatus,
+  updateRole,
+  updateRoleStatus
+} from "./api/system";
 import { saveAccessToken, saveUser } from "./store/auth";
 import type { UserInfo } from "./types/auth";
 import type { DepartmentRecord, RoleRecord } from "./types/system";
@@ -119,24 +128,65 @@ function App() {
 }
 
 function DepartmentPanel({ departments, onReload }: { departments: DepartmentRecord[]; onReload: () => Promise<void> }) {
+  const [editingDepartment, setEditingDepartment] = useState<DepartmentRecord | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [leader, setLeader] = useState("");
+  const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+  function startEdit(department: DepartmentRecord) {
+    setEditingDepartment(department);
+    setName(department.name);
+    setCode(department.code);
+    setLeader(department.leader ?? "");
+    setPhone(department.phone ?? "");
+    setError(null);
+  }
+
+  function resetForm() {
+    setEditingDepartment(null);
+    setName("");
+    setCode("");
+    setLeader("");
+    setPhone("");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      await createDepartment({ name, code, leader, sortOrder: flattenDepartments(departments).length + 1 });
-      setName("");
-      setCode("");
-      setLeader("");
+      if (editingDepartment) {
+        await updateDepartment(editingDepartment.id, {
+          parentId: editingDepartment.parentId ?? null,
+          name,
+          code,
+          leader,
+          phone,
+          sortOrder: editingDepartment.sortOrder
+        });
+      } else {
+        await createDepartment({ name, code, leader, phone, sortOrder: flattenDepartments(departments).length + 1 });
+      }
+      resetForm();
       await onReload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "部门创建失败");
+      setError(err instanceof Error ? err.message : "部门保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleStatus(department: DepartmentRecord) {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateDepartmentStatus(department.id, department.status === 1 ? 0 : 1);
+      await onReload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "部门状态更新失败");
     } finally {
       setSaving(false);
     }
@@ -144,41 +194,89 @@ function DepartmentPanel({ departments, onReload }: { departments: DepartmentRec
 
   return (
     <div className="desktop-management-grid">
-      <form className="desktop-mini-form" onSubmit={(event) => void handleCreate(event)}>
-        <h2>新建部门</h2>
+      <form className="desktop-mini-form" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="desktop-form-title-row">
+          <h2>{editingDepartment ? "编辑部门" : "新建部门"}</h2>
+          {editingDepartment ? <button className="desktop-link-button" type="button" onClick={resetForm}>取消</button> : null}
+        </div>
         {error ? <div className="desktop-alert">{error}</div> : null}
         <input value={name} onChange={(event) => setName(event.target.value)} placeholder="部门名称" required />
         <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="部门编码" required />
         <input value={leader} onChange={(event) => setLeader(event.target.value)} placeholder="负责人" />
-        <button className="desktop-primary-button" disabled={saving} type="submit">{saving ? "保存中..." : "保存部门"}</button>
+        <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="电话" />
+        <button className="desktop-primary-button" disabled={saving} type="submit">{saving ? "保存中..." : editingDepartment ? "更新部门" : "保存部门"}</button>
       </form>
       <div className="desktop-list-card">
         <h2>部门列表</h2>
-        {flattenDepartments(departments).map((department) => <ListItem key={department.id} title={department.name} meta={`${department.code} · ${department.status === 1 ? "启用" : "禁用"}`} />)}
+        {flattenDepartments(departments).map((department) => (
+          <ListItem
+            key={department.id}
+            title={department.name}
+            meta={`${department.code} · ${department.leader || "未设置负责人"} · ${department.status === 1 ? "启用" : "禁用"}`}
+            status={department.status}
+            disabled={saving}
+            onEdit={() => startEdit(department)}
+            onToggleStatus={() => void handleToggleStatus(department)}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
 function RolePanel({ roles, onReload }: { roles: RoleRecord[]; onReload: () => Promise<void> }) {
+  const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [dataScope, setDataScope] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+  function startEdit(role: RoleRecord) {
+    setEditingRole(role);
+    setName(role.name);
+    setCode(role.code);
+    setDescription(role.description ?? "");
+    setDataScope(role.dataScope);
+    setError(null);
+  }
+
+  function resetForm() {
+    setEditingRole(null);
+    setName("");
+    setCode("");
+    setDescription("");
+    setDataScope(1);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      await createRole({ name, code, description, dataScope: 1 });
-      setName("");
-      setCode("");
-      setDescription("");
+      if (editingRole) {
+        await updateRole(editingRole.id, { name, code, description, dataScope, permissionIds: editingRole.permissionIds ?? [] });
+      } else {
+        await createRole({ name, code, description, dataScope });
+      }
+      resetForm();
       await onReload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "角色创建失败");
+      setError(err instanceof Error ? err.message : "角色保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleStatus(role: RoleRecord) {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateRoleStatus(role.id, role.status === 1 ? 0 : 1);
+      await onReload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "角色状态更新失败");
     } finally {
       setSaving(false);
     }
@@ -186,28 +284,71 @@ function RolePanel({ roles, onReload }: { roles: RoleRecord[]; onReload: () => P
 
   return (
     <div className="desktop-management-grid">
-      <form className="desktop-mini-form" onSubmit={(event) => void handleCreate(event)}>
-        <h2>新建角色</h2>
+      <form className="desktop-mini-form" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="desktop-form-title-row">
+          <h2>{editingRole ? "编辑角色" : "新建角色"}</h2>
+          {editingRole ? <button className="desktop-link-button" type="button" onClick={resetForm}>取消</button> : null}
+        </div>
         {error ? <div className="desktop-alert">{error}</div> : null}
         <input value={name} onChange={(event) => setName(event.target.value)} placeholder="角色名称" required />
         <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="角色编码" required />
         <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="描述" />
-        <button className="desktop-primary-button" disabled={saving} type="submit">{saving ? "保存中..." : "保存角色"}</button>
+        <select value={dataScope} onChange={(event) => setDataScope(Number(event.target.value))}>
+          <option value={1}>全部数据</option>
+          <option value={2}>部门数据</option>
+          <option value={3}>本人数据</option>
+        </select>
+        <button className="desktop-primary-button" disabled={saving} type="submit">{saving ? "保存中..." : editingRole ? "更新角色" : "保存角色"}</button>
       </form>
       <div className="desktop-list-card">
         <h2>角色列表</h2>
-        {roles.map((role) => <ListItem key={role.id} title={role.name} meta={`${role.code} · 数据范围 ${role.dataScope} · ${role.status === 1 ? "启用" : "禁用"}`} />)}
+        {roles.map((role) => (
+          <ListItem
+            key={role.id}
+            title={role.name}
+            meta={`${role.code} · ${renderDataScope(role.dataScope)} · ${role.status === 1 ? "启用" : "禁用"}`}
+            status={role.status}
+            disabled={saving}
+            onEdit={() => startEdit(role)}
+            onToggleStatus={() => void handleToggleStatus(role)}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function ListItem({ title, meta }: { title: string; meta: string }) {
-  return <div className="desktop-list-item"><strong>{title}</strong><span>{meta}</span></div>;
+function ListItem({ title, meta, status, disabled, onEdit, onToggleStatus }: {
+  title: string;
+  meta: string;
+  status: number;
+  disabled: boolean;
+  onEdit: () => void;
+  onToggleStatus: () => void;
+}) {
+  return (
+    <div className="desktop-list-item">
+      <div>
+        <strong>{title}</strong>
+        <span>{meta}</span>
+      </div>
+      <div className="desktop-list-actions">
+        <button className="desktop-link-button" disabled={disabled} type="button" onClick={onEdit}>编辑</button>
+        <button className="desktop-link-button" disabled={disabled} type="button" onClick={onToggleStatus}>{status === 1 ? "禁用" : "启用"}</button>
+      </div>
+    </div>
+  );
 }
 
 function flattenDepartments(departments: DepartmentRecord[]): DepartmentRecord[] {
   return departments.flatMap((department) => [department, ...flattenDepartments(department.children ?? [])]);
+}
+
+function renderDataScope(dataScope: number) {
+  if (dataScope === 1) return "全部数据";
+  if (dataScope === 2) return "部门数据";
+  if (dataScope === 3) return "本人数据";
+  return `数据范围 ${dataScope}`;
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
