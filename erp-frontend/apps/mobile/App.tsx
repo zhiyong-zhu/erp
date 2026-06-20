@@ -12,40 +12,29 @@ import {
   View
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { APP_NAME } from "@erp/shared";
 import { mobileShellTitle } from "@erp/ui-mobile";
 import { fetchUserInfo, login, logout } from "./src/api/auth";
-import {
-  createDepartment,
-  createRole,
-  fetchDepartments,
-  fetchRoles,
-  updateDepartment,
-  updateDepartmentStatus,
-  updateRole,
-  updateRoleStatus
-} from "./src/api/system";
 import { saveAccessToken, saveUser } from "./src/store/auth";
 import type { UserInfo } from "./src/types/auth";
-import type { DepartmentRecord, RoleRecord } from "./src/types/system";
 
-type MobileTab = "departments" | "roles";
+type OperationKey = "production" | "receipt" | "issue" | "check" | "boxPrint" | "documentPrint";
+
+const operationCards: Array<{ key: OperationKey; title: string; description: string; tag: string }> = [
+  { key: "production", title: "生产执行", description: "扫描工单并提交生产报工。", tag: "车间" },
+  { key: "receipt", title: "扫码入库", description: "扫描物料码、箱码或入库单。", tag: "入库" },
+  { key: "issue", title: "扫码出库", description: "扫描领料单、出库单或箱码。", tag: "出库" },
+  { key: "check", title: "仓库盘点", description: "按库位扫码盘点并提交差异。", tag: "盘点" },
+  { key: "boxPrint", title: "箱码打印", description: "按工单生成箱码并打印标签。", tag: "打印" },
+  { key: "documentPrint", title: "单据打印", description: "打印入库单、出库单、盘点单。", tag: "单据" }
+];
 
 export default function App() {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("password");
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [roles, setRoles] = useState<RoleRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<MobileTab>("departments");
+  const [activeOperation, setActiveOperation] = useState<OperationKey>("production");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function loadSystemData() {
-    const [departmentData, roleData] = await Promise.all([fetchDepartments(), fetchRoles()]);
-    setDepartments(departmentData);
-    setRoles(roleData);
-  }
 
   async function handleLogin() {
     setLoading(true);
@@ -56,7 +45,6 @@ export default function App() {
       const info = await fetchUserInfo();
       saveUser(info);
       setUser(info);
-      await loadSystemData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请检查用户名和密码");
     } finally {
@@ -72,8 +60,6 @@ export default function App() {
       saveAccessToken(null);
       saveUser(null);
       setUser(null);
-      setDepartments([]);
-      setRoles([]);
       setLoading(false);
     }
   }
@@ -86,20 +72,29 @@ export default function App() {
           {user ? (
             <View style={[styles.panel, styles.dashboardPanel]}>
               <Text style={styles.badge}>ERP Mobile</Text>
-              <Text style={styles.title}>系统管理工作台</Text>
-              <Text style={styles.subtitle}>欢迎回来，{user.realName || user.username}。移动端可维护部门与角色基础数据。</Text>
-              <View style={styles.tabs}>
-                <Pressable onPress={() => setActiveTab("departments")} style={[styles.tab, activeTab === "departments" && styles.activeTab]}><Text style={[styles.tabText, activeTab === "departments" && styles.activeTabText]}>部门</Text></Pressable>
-                <Pressable onPress={() => setActiveTab("roles")} style={[styles.tab, activeTab === "roles" && styles.activeTab]}><Text style={[styles.tabText, activeTab === "roles" && styles.activeTabText]}>角色</Text></Pressable>
+              <Text style={styles.title}>移动作业台</Text>
+              <Text style={styles.subtitle}>欢迎回来，{user.realName || user.username}。移动端只保留扫码、盘点、打印等现场操作入口。</Text>
+              <View style={styles.operationGrid}>
+                {operationCards.map((operation) => (
+                  <Pressable
+                    key={operation.key}
+                    onPress={() => setActiveOperation(operation.key)}
+                    style={[styles.operationCard, activeOperation === operation.key && styles.activeOperationCard]}
+                  >
+                    <Text style={[styles.operationTag, activeOperation === operation.key && styles.activeOperationText]}>{operation.tag}</Text>
+                    <Text style={[styles.operationTitle, activeOperation === operation.key && styles.activeOperationText]}>{operation.title}</Text>
+                    <Text style={[styles.operationDescription, activeOperation === operation.key && styles.activeOperationText]}>{operation.description}</Text>
+                  </Pressable>
+                ))}
               </View>
-              {activeTab === "departments" ? <DepartmentSection departments={departments} onReload={loadSystemData} /> : <RoleSection roles={roles} onReload={loadSystemData} />}
+              <OperationDetail operation={operationCards.find((operation) => operation.key === activeOperation) ?? operationCards[0]} />
               <Pressable disabled={loading} onPress={() => void handleLogout()} style={[styles.secondaryButton, loading && styles.disabledButton]}><Text style={styles.secondaryButtonText}>{loading ? "退出中..." : "退出登录"}</Text></Pressable>
             </View>
           ) : (
             <View style={styles.panel}>
               <Text style={styles.badge}>{mobileShellTitle()}</Text>
               <Text style={styles.title}>全渠道 ERP 移动端登录</Text>
-              <Text style={styles.subtitle}>连接后端服务，使用管理员账号进入移动端工作台。</Text>
+              <Text style={styles.subtitle}>连接后端服务，使用管理员账号进入移动作业台。</Text>
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <View style={styles.form}>
                 <View style={styles.field}><Text style={styles.label}>用户名</Text><TextInput autoCapitalize="none" autoCorrect={false} editable={!loading} onChangeText={setUsername} placeholder="请输入用户名" style={styles.input} value={username} /></View>
@@ -114,231 +109,28 @@ export default function App() {
   );
 }
 
-function DepartmentSection({ departments, onReload }: { departments: DepartmentRecord[]; onReload: () => Promise<void> }) {
-  const [editingDepartment, setEditingDepartment] = useState<DepartmentRecord | null>(null);
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function startEdit(department: DepartmentRecord) {
-    setEditingDepartment(department);
-    setName(department.name);
-    setCode(department.code);
-    setError(null);
-  }
-
-  function resetForm() {
-    setEditingDepartment(null);
-    setName("");
-    setCode("");
-  }
-
-  async function handleSubmit() {
-    setSaving(true);
-    setError(null);
-    try {
-      if (editingDepartment) {
-        await updateDepartment(editingDepartment.id, {
-          parentId: editingDepartment.parentId ?? null,
-          name,
-          code,
-          leader: editingDepartment.leader ?? undefined,
-          phone: editingDepartment.phone ?? undefined,
-          sortOrder: editingDepartment.sortOrder
-        });
-      } else {
-        await createDepartment({ name, code, sortOrder: flattenDepartments(departments).length + 1 });
-      }
-      resetForm();
-      await onReload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "部门保存失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggleStatus(department: DepartmentRecord) {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateDepartmentStatus(department.id, department.status === 1 ? 0 : 1);
-      await onReload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "部门状态更新失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
+function OperationDetail({ operation }: { operation: (typeof operationCards)[number] }) {
   return (
-    <ManagementSection
-      title={editingDepartment ? "编辑部门" : "新建部门"}
-      name={name}
-      code={code}
-      error={error}
-      saving={saving}
-      submitText={editingDepartment ? "更新" : "保存"}
-      onCancelEdit={editingDepartment ? resetForm : undefined}
-      onNameChange={setName}
-      onCodeChange={setCode}
-      onSubmit={handleSubmit}
-      items={flattenDepartments(departments).map((department) => ({
-        id: department.id,
-        title: department.name,
-        meta: `${department.code} · ${department.status === 1 ? "启用" : "禁用"}`,
-        status: department.status,
-        onEdit: () => startEdit(department),
-        onToggleStatus: () => void handleToggleStatus(department)
-      }))}
-    />
-  );
-}
-
-function RoleSection({ roles, onReload }: { roles: RoleRecord[]; onReload: () => Promise<void> }) {
-  const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function startEdit(role: RoleRecord) {
-    setEditingRole(role);
-    setName(role.name);
-    setCode(role.code);
-    setDescription(role.description ?? "");
-    setError(null);
-  }
-
-  function resetForm() {
-    setEditingRole(null);
-    setName("");
-    setCode("");
-    setDescription("");
-  }
-
-  async function handleSubmit() {
-    setSaving(true);
-    setError(null);
-    try {
-      if (editingRole) {
-        await updateRole(editingRole.id, {
-          name,
-          code,
-          description,
-          dataScope: editingRole.dataScope,
-          permissionIds: editingRole.permissionIds ?? []
-        });
-      } else {
-        await createRole({ name, code, description, dataScope: 1 });
-      }
-      resetForm();
-      await onReload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "角色保存失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggleStatus(role: RoleRecord) {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateRoleStatus(role.id, role.status === 1 ? 0 : 1);
-      await onReload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "角色状态更新失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <ManagementSection
-      title={editingRole ? "编辑角色" : "新建角色"}
-      name={name}
-      code={code}
-      description={description}
-      descriptionPlaceholder="描述"
-      error={error}
-      saving={saving}
-      submitText={editingRole ? "更新" : "保存"}
-      onCancelEdit={editingRole ? resetForm : undefined}
-      onNameChange={setName}
-      onCodeChange={setCode}
-      onDescriptionChange={setDescription}
-      onSubmit={handleSubmit}
-      items={roles.map((role) => ({
-        id: role.id,
-        title: role.name,
-        meta: `${role.code} · ${renderDataScope(role.dataScope)} · ${role.status === 1 ? "启用" : "禁用"}`,
-        status: role.status,
-        onEdit: () => startEdit(role),
-        onToggleStatus: () => void handleToggleStatus(role)
-      }))}
-    />
-  );
-}
-
-function ManagementSection({ title, name, code, description, descriptionPlaceholder, error, saving, submitText, items, onCancelEdit, onNameChange, onCodeChange, onDescriptionChange, onSubmit }: {
-  title: string;
-  name: string;
-  code: string;
-  description?: string;
-  descriptionPlaceholder?: string;
-  error: string | null;
-  saving: boolean;
-  submitText: string;
-  items: Array<{ id: string; title: string; meta: string; status: number; onEdit: () => void; onToggleStatus: () => void }>;
-  onCancelEdit?: () => void;
-  onNameChange: (value: string) => void;
-  onCodeChange: (value: string) => void;
-  onDescriptionChange?: (value: string) => void;
-  onSubmit: () => Promise<void>;
-}) {
-  return (
-    <View style={styles.managementBlock}>
-      <View style={styles.sectionTitleRow}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {onCancelEdit ? <Pressable onPress={onCancelEdit}><Text style={styles.linkText}>取消</Text></Pressable> : null}
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TextInput onChangeText={onNameChange} placeholder="名称" style={styles.input} value={name} />
-      <TextInput autoCapitalize="characters" onChangeText={onCodeChange} placeholder="编码" style={styles.input} value={code} />
-      {onDescriptionChange ? <TextInput onChangeText={onDescriptionChange} placeholder={descriptionPlaceholder} style={styles.input} value={description} /> : null}
-      <Pressable disabled={saving || !name || !code} onPress={() => void onSubmit()} style={[styles.primaryButton, (saving || !name || !code) && styles.disabledButton]}><Text style={styles.primaryButtonText}>{saving ? "保存中..." : submitText}</Text></Pressable>
-      <View style={styles.infoCard}>{items.map((item) => <InfoRow key={item.id} item={item} saving={saving} />)}</View>
+    <View style={styles.detailCard}>
+      <Text style={styles.detailTag}>{operation.tag}</Text>
+      <Text style={styles.sectionTitle}>{operation.title}</Text>
+      <Text style={styles.detailDescription}>{operation.description}</Text>
+      {renderOperationSteps(operation.key).map((step) => <Text key={step} style={styles.stepItem}>{step}</Text>)}
+      <Pressable style={styles.primaryButton}><Text style={styles.primaryButtonText}>进入{operation.title}</Text></Pressable>
     </View>
   );
 }
 
-function InfoRow({ item, saving }: { item: { title: string; meta: string; status: number; onEdit: () => void; onToggleStatus: () => void }; saving: boolean }) {
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoTextBlock}>
-        <Text style={styles.infoLabel}>{item.title}</Text>
-        <Text style={styles.infoValue}>{item.meta}</Text>
-      </View>
-      <View style={styles.rowActions}>
-        <Pressable disabled={saving} onPress={item.onEdit}><Text style={[styles.linkText, saving && styles.disabledText]}>编辑</Text></Pressable>
-        <Pressable disabled={saving} onPress={item.onToggleStatus}><Text style={[styles.linkText, saving && styles.disabledText]}>{item.status === 1 ? "禁用" : "启用"}</Text></Pressable>
-      </View>
-    </View>
-  );
-}
-
-function flattenDepartments(departments: DepartmentRecord[]): DepartmentRecord[] {
-  return departments.flatMap((department) => [department, ...flattenDepartments(department.children ?? [])]);
-}
-
-function renderDataScope(dataScope: number) {
-  if (dataScope === 1) return "全部数据";
-  if (dataScope === 2) return "部门数据";
-  if (dataScope === 3) return "本人数据";
-  return `数据范围 ${dataScope}`;
+function renderOperationSteps(operationKey: OperationKey) {
+  const stepMap: Record<OperationKey, string[]> = {
+    production: ["扫描/选择工单", "录入良品与不良数量", "提交生产执行记录"],
+    receipt: ["扫描入库单或箱码", "校验物料与数量", "确认扫码入库"],
+    issue: ["扫描出库单或领料单", "校验批次与库存", "确认扫码出库"],
+    check: ["选择仓库/库位", "扫码录入实盘数量", "提交盘点差异"],
+    boxPrint: ["选择工单与箱数", "生成箱码", "连接打印机输出标签"],
+    documentPrint: ["选择单据类型", "预览打印内容", "连接打印机输出单据"]
+  };
+  return stepMap[operationKey];
 }
 
 const styles = StyleSheet.create({
@@ -360,20 +152,16 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: "#0f172a", fontSize: 15, fontWeight: "700" },
   disabledButton: { opacity: 0.7 },
   error: { marginTop: 10, padding: 12, borderRadius: 14, overflow: "hidden", backgroundColor: "#fef2f2", color: "#b91c1c" },
-  tabs: { flexDirection: "row", gap: 10 },
-  tab: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 999, backgroundColor: "#e2e8f0" },
-  activeTab: { backgroundColor: "#0f766e" },
-  tabText: { color: "#334155", fontWeight: "700" },
-  activeTabText: { color: "#ffffff" },
-  managementBlock: { gap: 12 },
-  sectionTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#10263d" },
-  infoCard: { gap: 12, padding: 16, borderRadius: 18, backgroundColor: "#f8fafc" },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  infoTextBlock: { flex: 1, gap: 4 },
-  infoLabel: { color: "#64748b", fontSize: 13, fontWeight: "700" },
-  infoValue: { color: "#0f172a", fontSize: 15 },
-  rowActions: { flexDirection: "row", alignItems: "center", gap: 12 },
-  linkText: { color: "#0f766e", fontWeight: "700" },
-  disabledText: { opacity: 0.55 }
+  operationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  operationCard: { width: "48%", minHeight: 136, gap: 8, padding: 14, borderRadius: 18, backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" },
+  activeOperationCard: { backgroundColor: "#0f766e", borderColor: "#0f766e" },
+  operationTag: { color: "#0f766e", fontSize: 12, fontWeight: "800" },
+  operationTitle: { color: "#10263d", fontSize: 17, fontWeight: "800" },
+  operationDescription: { color: "#64748b", fontSize: 13, lineHeight: 19 },
+  activeOperationText: { color: "#ffffff" },
+  detailCard: { gap: 12, padding: 18, borderRadius: 20, backgroundColor: "#ecfeff" },
+  detailTag: { color: "#0f766e", fontSize: 12, fontWeight: "800" },
+  sectionTitle: { fontSize: 20, fontWeight: "800", color: "#10263d" },
+  detailDescription: { color: "#475569", fontSize: 15, lineHeight: 22 },
+  stepItem: { padding: 12, borderRadius: 14, overflow: "hidden", backgroundColor: "#ffffff", color: "#334155", fontWeight: "700" }
 });
