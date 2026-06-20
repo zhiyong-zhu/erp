@@ -5,12 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
+import com.erp.inventory.domain.entity.InventoryTransaction;
+import com.erp.inventory.mapper.InventoryTransactionMapper;
 import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
 import com.erp.product.domain.entity.Product;
 import com.erp.product.domain.entity.ProductPackage;
 import com.erp.product.mapper.ProductMapper;
 import com.erp.product.mapper.ProductPackageMapper;
+import com.erp.production.domain.ProductionBatchStatusMachine;
 import com.erp.production.domain.dto.ProductionBatchRequest;
 import com.erp.production.domain.dto.ProductionBoxRequest;
 import com.erp.production.domain.dto.ProductionBomItemRequest;
@@ -77,6 +80,7 @@ public class ProductionServiceImpl implements ProductionService {
     private final ProductionProductStockMapper productStockMapper;
     private final ProductionReportMapper reportMapper;
     private final SerialNumberMapper serialNumberMapper;
+    private final InventoryTransactionMapper inventoryTransactionMapper;
 
     public ProductionServiceImpl(ProductMapper productMapper,
                                  ProductPackageMapper productPackageMapper,
@@ -89,7 +93,8 @@ public class ProductionServiceImpl implements ProductionService {
                                  ProductionBoxMapper boxMapper,
                                  ProductionProductStockMapper productStockMapper,
                                  ProductionReportMapper reportMapper,
-                                 SerialNumberMapper serialNumberMapper) {
+                                 SerialNumberMapper serialNumberMapper,
+                                 InventoryTransactionMapper inventoryTransactionMapper) {
         this.productMapper = productMapper;
         this.productPackageMapper = productPackageMapper;
         this.materialMapper = materialMapper;
@@ -102,6 +107,7 @@ public class ProductionServiceImpl implements ProductionService {
         this.productStockMapper = productStockMapper;
         this.reportMapper = reportMapper;
         this.serialNumberMapper = serialNumberMapper;
+        this.inventoryTransactionMapper = inventoryTransactionMapper;
     }
 
     @Override
@@ -256,12 +262,12 @@ public class ProductionServiceImpl implements ProductionService {
     @Transactional
     public ProductionBatchVO startBatch(UUID id) {
         ProductionBatch batch = getBatch(id);
-        if ("CLOSED".equals(batch.getStatus()) || "COMPLETED".equals(batch.getStatus())) {
-            throw new BizException(10004, "Completed or closed batch cannot be started");
-        }
-        if (!"IN_PROGRESS".equals(batch.getStatus())) {
-            batch.setStatus("IN_PROGRESS");
-            batch.setStartedAt(OffsetDateTime.now());
+        ProductionBatchStatusMachine.ensureCanStart(batch.getStatus());
+        if (!ProductionBatchStatusMachine.IN_PROGRESS.equals(batch.getStatus())) {
+            batch.setStatus(ProductionBatchStatusMachine.IN_PROGRESS);
+            if (batch.getStartedAt() == null) {
+                batch.setStartedAt(OffsetDateTime.now());
+            }
         }
         batch.setUpdatedBy(SecurityUtils.getUserId());
         batch.setUpdatedAt(OffsetDateTime.now());
@@ -273,8 +279,10 @@ public class ProductionServiceImpl implements ProductionService {
     @Transactional
     public ProductionBatchVO receiveBatch(UUID id) {
         ProductionBatch batch = getBatch(id);
-        if (!"COMPLETED".equals(batch.getStatus())) {
-            throw new BizException(10004, "Only completed batch can be received");
+        ProductionBatchStatusMachine.ensureCanReceive(batch.getStatus());
+        BigDecimal receiptQuantity = safe(batch.getCompletedQuantity());
+        if (receiptQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BizException(10004, "完工数量必须大于0才能入库");
         }
         Product product = ensureProductExists(batch.getProductId());
         ProductionProductStock stock = productStockMapper.selectOne(
@@ -291,7 +299,7 @@ public class ProductionServiceImpl implements ProductionService {
             stock.setCreatedBy(SecurityUtils.getUserId());
             stock.setCreatedAt(now);
         }
-        stock.setCurrentStock(safe(stock.getCurrentStock()).add(safe(batch.getCompletedQuantity())));
+        stock.setCurrentStock(safe(stock.getCurrentStock()).add(receiptQuantity));
         stock.setUpdatedBy(SecurityUtils.getUserId());
         stock.setUpdatedAt(now);
         if (stock.getCreatedAt() == null) {
@@ -304,10 +312,11 @@ public class ProductionServiceImpl implements ProductionService {
                 productStockMapper.updateById(stock);
             }
         }
-        batch.setStatus("CLOSED");
+        batch.setStatus(ProductionBatchStatusMachine.CLOSED);
         batch.setUpdatedBy(SecurityUtils.getUserId());
         batch.setUpdatedAt(now);
         batchMapper.updateById(batch);
+        createProductionInTransaction(batch, stock, receiptQuantity, now);
         return toBatchVO(batch);
     }
 
@@ -359,9 +368,7 @@ public class ProductionServiceImpl implements ProductionService {
     @Transactional
     public ProductionReportVO createReport(ProductionReportRequest request) {
         ProductionBatch batch = getBatch(request.getBatchId());
-        if ("CLOSED".equals(batch.getStatus()) || "COMPLETED".equals(batch.getStatus())) {
-            throw new BizException(10004, "Completed or closed batch cannot be reported");
-        }
+        ProductionBatchStatusMachine.ensureCanReport(batch.getStatus());
 
         BigDecimal reportQuantity = request.getReportQuantity();
         BigDecimal defectQuantity = safe(request.getDefectQuantity());
@@ -401,8 +408,10 @@ public class ProductionServiceImpl implements ProductionService {
         if (batch.getStartedAt() == null) {
             batch.setStartedAt(now);
         }
-        batch.setStatus(completedQuantity.compareTo(batch.getPlannedQuantity()) >= 0 ? "COMPLETED" : "IN_PROGRESS");
-        if ("COMPLETED".equals(batch.getStatus())) {
+        batch.setStatus(completedQuantity.compareTo(batch.getPlannedQuantity()) >= 0
+                ? ProductionBatchStatusMachine.COMPLETED
+                : ProductionBatchStatusMachine.IN_PROGRESS);
+        if (ProductionBatchStatusMachine.COMPLETED.equals(batch.getStatus())) {
             batch.setCompletedAt(now);
         }
         batch.setUpdatedBy(SecurityUtils.getUserId());
@@ -428,9 +437,7 @@ public class ProductionServiceImpl implements ProductionService {
     @Transactional
     public ProductionBoxVO packBox(ProductionBoxRequest request) {
         ProductionBatch batch = getBatch(request.getBatchId());
-        if (!"IN_PROGRESS".equals(batch.getStatus()) && !"COMPLETED".equals(batch.getStatus())) {
-            throw new BizException(10004, "Only in-progress or completed batch can be packed");
-        }
+        ProductionBatchStatusMachine.ensureCanPack(batch.getStatus());
         Product product = ensureProductExists(batch.getProductId());
         ProductPackage productPackage = productPackageMapper.selectById(request.getPackageId());
         if (productPackage == null || !productPackage.getProductId().equals(batch.getProductId())) {
@@ -566,6 +573,24 @@ public class ProductionServiceImpl implements ProductionService {
             item.setRemark(request.getRemark());
             bomItemMapper.insert(item);
         }
+    }
+
+    private void createProductionInTransaction(ProductionBatch batch, ProductionProductStock stock, BigDecimal quantity, OffsetDateTime now) {
+        InventoryTransaction transaction = new InventoryTransaction();
+        transaction.setId(UUID.randomUUID());
+        transaction.setMaterialId(stock.getProductId());
+        transaction.setMaterialCode(stock.getProductCode());
+        transaction.setMaterialName(stock.getProductName());
+        transaction.setTransactionType("PRODUCTION_IN");
+        transaction.setQuantity(quantity);
+        transaction.setBalanceAfter(stock.getCurrentStock());
+        transaction.setSourceType("PRODUCTION_BATCH");
+        transaction.setSourceOrderId(batch.getId());
+        transaction.setSourceOrderNo(batch.getBatchNo());
+        transaction.setRemark("生产完工入库: " + batch.getBatchNo());
+        transaction.setCreatedBy(SecurityUtils.getUserId());
+        transaction.setCreatedAt(now);
+        inventoryTransactionMapper.insert(transaction);
     }
 
     private void validateProcessSteps(List<ProductionProcessStepRequest> steps) {

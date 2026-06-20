@@ -1,6 +1,6 @@
 import { PlayCircleOutlined, ToolOutlined } from "@ant-design/icons";
 import { ModalForm, ProFormDigit, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
-import { App, Button, Divider, Input, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Divider, Input, Modal, Space, Table, Tag, Typography } from "antd";
 import { PRODUCTION_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
@@ -39,6 +39,26 @@ const batchStatusMap: Record<string, { text: string; color?: string }> = {
 const reportStatusMap: Record<string, { text: string; color?: string }> = {
   SUBMITTED: { text: "已提交", color: "success" }
 };
+
+function canGenerateSerials(status: string) {
+  return status !== "CLOSED";
+}
+
+function canStartBatch(status: string) {
+  return status === "DRAFT" || status === "RELEASED";
+}
+
+function canReportBatch(status: string) {
+  return status === "IN_PROGRESS";
+}
+
+function canPackBatch(status: string) {
+  return status === "IN_PROGRESS" || status === "COMPLETED";
+}
+
+function canReceiveBatch(status: string) {
+  return status === "COMPLETED";
+}
 
 export function ProductionReportPage() {
   const [batchLoading, setBatchLoading] = useState(false);
@@ -122,12 +142,23 @@ export function ProductionReportPage() {
     }
   }
 
+  function confirmStart(batch: ProductionBatchRecord) {
+    Modal.confirm({
+      title: "确认投产？",
+      content: `批次号：${batch.batchNo}`,
+      okText: "确认",
+      cancelText: "取消",
+      onOk: () => handleStart(batch)
+    });
+  }
+
   async function handleGenerateSerials(values: SerialNumberGeneratePayload) {
     if (!serialBatch) return false;
     try {
       const created = await generateBatchSerialNumbers(serialBatch.id, values);
       message.success(`已生成 ${created.length} 个序列号`);
       setSerialBatch(null);
+      await loadBatches();
       return true;
     } catch (err: any) {
       message.error(err?.response?.data?.message ?? err?.message ?? "生成序列号失败");
@@ -159,6 +190,16 @@ export function ProductionReportPage() {
     }
   }
 
+  function confirmReceipt(batch: ProductionBatchRecord) {
+    Modal.confirm({
+      title: "确认完工入库？",
+      content: `批次 ${batch.batchNo} 将以完成数 ${batch.completedQuantity ?? 0} 写入成品库存和库存流水。`,
+      okText: "确认入库",
+      cancelText: "取消",
+      onOk: () => handleReceipt(batch)
+    });
+  }
+
   async function handleReport(values: ProductionReportPayload) {
     if (!reportingBatch) {
       return false;
@@ -167,7 +208,7 @@ export function ProductionReportPage() {
       await createProductionReport({ ...values, batchId: reportingBatch.id });
       message.success("报工已提交");
       setReportingBatch(null);
-      await Promise.all([loadBatches(), loadReports(1, reportPageSize)]);
+      await Promise.all([loadBatches(), loadReports(1, reportPageSize), loadStocks()]);
       return true;
     } catch (err: any) {
       message.error(err?.response?.data?.message ?? err?.message ?? "报工失败");
@@ -189,24 +230,21 @@ export function ProductionReportPage() {
       key: "actions",
       width: 360,
       render: (_, record) => {
-        const started = record.status === "IN_PROGRESS";
-        const done = record.status === "COMPLETED" || record.status === "CLOSED";
-        const receivable = record.status === "COMPLETED";
         return (
           <Space>
-            <Button size="small" disabled={!canCreateReport || done} onClick={() => setSerialBatch(record)}>
+            <Button size="small" disabled={!canCreateReport || !canGenerateSerials(record.status)} onClick={() => setSerialBatch(record)}>
               生成码
             </Button>
-            <Button size="small" icon={<PlayCircleOutlined />} disabled={!canCreateReport || started || done} onClick={() => void handleStart(record)}>
+            <Button size="small" icon={<PlayCircleOutlined />} disabled={!canCreateReport || !canStartBatch(record.status)} onClick={() => confirmStart(record)}>
               投产
             </Button>
-            <Button size="small" type="primary" icon={<ToolOutlined />} disabled={!canCreateReport || done} onClick={() => setReportingBatch(record)}>
+            <Button size="small" type="primary" icon={<ToolOutlined />} disabled={!canCreateReport || !canReportBatch(record.status)} onClick={() => setReportingBatch(record)}>
               报工
             </Button>
-            <Button size="small" disabled={!canCreateReport || record.status === "DRAFT" || record.status === "CLOSED"} onClick={() => setPackingBatch(record)}>
+            <Button size="small" disabled={!canCreateReport || !canPackBatch(record.status)} onClick={() => setPackingBatch(record)}>
               装箱
             </Button>
-            <Button size="small" disabled={!canCreateReport || !receivable} onClick={() => void handleReceipt(record)}>
+            <Button size="small" disabled={!canCreateReport || !canReceiveBatch(record.status)} onClick={() => confirmReceipt(record)}>
               入库
             </Button>
           </Space>
