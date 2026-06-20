@@ -11,6 +11,7 @@ import type {
   SaleExceptionHandlePayload,
   SaleExceptionRecord,
   SaleReceivableStatRecord,
+  SaleReportSummary,
   SaleReturnCreatePayload,
   SaleReturnRecord,
   SaleReturnStatusPayload,
@@ -122,6 +123,12 @@ export async function fetchSaleExceptions(query: PageQuery): Promise<PageResult<
 
 export async function handleSaleException(id: string, payload: SaleExceptionHandlePayload): Promise<SaleExceptionRecord> {
   const response = await http.post<ApiResponse<SaleExceptionRecord>>(`/sales/exceptions/${id}/handle`, payload);
+  return response.data.data;
+}
+
+// ========== 销售报表 ==========
+export async function fetchSaleReportSummary(): Promise<SaleReportSummary> {
+  const response = await http.get<ApiResponse<SaleReportSummary>>("/sales/reports/summary");
   return response.data.data;
 }
 

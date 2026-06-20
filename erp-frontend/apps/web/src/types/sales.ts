@@ -199,6 +199,33 @@ export interface SaleExceptionHandlePayload {
   resolution?: string;
 }
 
+// ========== 销售报表 ==========
+export interface SaleReportSummary {
+  orderAmount?: number | null;
+  returnAmount?: number | null;
+  netSalesAmount?: number | null;
+  orderCount?: number | null;
+  returnCount?: number | null;
+  customerCount?: number | null;
+  topCustomers: SaleCustomerRank[];
+  topProducts: SaleProductRank[];
+}
+
+export interface SaleCustomerRank {
+  customerName?: string | null;
+  orderAmount?: number | null;
+  returnAmount?: number | null;
+  netSalesAmount?: number | null;
+  orderCount?: number | null;
+}
+
+export interface SaleProductRank {
+  skuCode?: string | null;
+  productName?: string | null;
+  quantity?: number | null;
+  salesAmount?: number | null;
+}
+
 // ========== 电商店铺 ==========
 export interface EcommerceShopRecord extends BaseRecord {
   id: string;

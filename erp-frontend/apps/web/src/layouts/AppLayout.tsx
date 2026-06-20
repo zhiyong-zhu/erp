@@ -189,6 +189,9 @@ export function AppLayout() {
           hasPermission(SALES_PERMISSIONS.RECEIVABLE_LIST)
             ? { key: "/sales/receivables", icon: <WalletOutlined />, label: "应收统计", onClick: () => navigate("/sales/receivables") }
             : null,
+          hasPermission(SALES_PERMISSIONS.REPORT_LIST)
+            ? { key: "/sales/reports", icon: <FileSearchOutlined />, label: "销售报表", onClick: () => navigate("/sales/reports") }
+            : null,
           hasPermission(SALES_PERMISSIONS.EXCEPTION_LIST)
             ? { key: "/sales/exceptions", icon: <WarningOutlined />, label: "销售异常", onClick: () => navigate("/sales/exceptions") }
             : null,
@@ -264,6 +267,8 @@ export function AppLayout() {
     selectedKeys = ["/sales/shipping"];
   } else if (location.pathname.startsWith("/sales/receivables")) {
     selectedKeys = ["/sales/receivables"];
+  } else if (location.pathname.startsWith("/sales/reports")) {
+    selectedKeys = ["/sales/reports"];
   } else if (location.pathname.startsWith("/sales/exceptions")) {
     selectedKeys = ["/sales/exceptions"];
   } else if (location.pathname.startsWith("/sales/ecommerce")) {

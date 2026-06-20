@@ -41,6 +41,7 @@ import { SaleReturnPage } from "../pages/sales/returns/SaleReturnPage";
 import { ShippingPage } from "../pages/sales/shipping/ShippingPage";
 import { SaleReceivablePage } from "../pages/sales/receivables/SaleReceivablePage";
 import { SaleExceptionPage } from "../pages/sales/exceptions/SaleExceptionPage";
+import { SaleReportPage } from "../pages/sales/reports/SaleReportPage";
 import { EcommerceShopPage } from "../pages/sales/ecommerce/EcommerceShopPage";
 
 function resolveDefaultRoute() {
@@ -104,6 +105,9 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(SALES_PERMISSIONS.RECEIVABLE_LIST)) {
     return "/sales/receivables";
+  }
+  if (permissions.includes(SALES_PERMISSIONS.REPORT_LIST)) {
+    return "/sales/reports";
   }
   if (permissions.includes(SALES_PERMISSIONS.EXCEPTION_LIST)) {
     return "/sales/exceptions";
@@ -209,6 +213,7 @@ export function AppRouter() {
             <Route path="/sales/returns" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.RETURN_LIST}><SaleReturnPage /></PermissionGuard>} />
             <Route path="/sales/shipping" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.SHIPPING_LIST}><ShippingPage /></PermissionGuard>} />
             <Route path="/sales/receivables" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.RECEIVABLE_LIST}><SaleReceivablePage /></PermissionGuard>} />
+            <Route path="/sales/reports" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.REPORT_LIST}><SaleReportPage /></PermissionGuard>} />
             <Route path="/sales/exceptions" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.EXCEPTION_LIST}><SaleExceptionPage /></PermissionGuard>} />
             <Route path="/sales/ecommerce" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.ORDER_LIST}><EcommerceShopPage /></PermissionGuard>} />
           </Route>
