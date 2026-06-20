@@ -17,6 +17,7 @@ import com.erp.sales.domain.dto.ShippingOrderRequest;
 import com.erp.sales.domain.entity.Customer;
 import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
+import com.erp.sales.domain.entity.SaleReturn;
 import com.erp.sales.domain.entity.ShippingOrder;
 import com.erp.sales.domain.vo.SaleOrderItemVO;
 import com.erp.sales.domain.vo.SaleOrderVO;
@@ -25,6 +26,7 @@ import com.erp.sales.domain.vo.ShippingVO;
 import com.erp.sales.mapper.CustomerMapper;
 import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
+import com.erp.sales.mapper.SaleReturnMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
 import com.erp.sales.service.SaleOrderService;
 import java.math.BigDecimal;
@@ -46,6 +48,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
     private final ShippingOrderMapper shippingOrderMapper;
+    private final SaleReturnMapper saleReturnMapper;
     private final CustomerMapper customerMapper;
     private final MaterialMapper materialMapper;
     private final ProductionProductStockMapper productStockMapper;
@@ -55,6 +58,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             SaleOrderMapper saleOrderMapper,
             SaleOrderItemMapper saleOrderItemMapper,
             ShippingOrderMapper shippingOrderMapper,
+            SaleReturnMapper saleReturnMapper,
             CustomerMapper customerMapper,
             MaterialMapper materialMapper,
             ProductionProductStockMapper productStockMapper,
@@ -63,6 +67,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         this.saleOrderMapper = saleOrderMapper;
         this.saleOrderItemMapper = saleOrderItemMapper;
         this.shippingOrderMapper = shippingOrderMapper;
+        this.saleReturnMapper = saleReturnMapper;
         this.customerMapper = customerMapper;
         this.materialMapper = materialMapper;
         this.productStockMapper = productStockMapper;
@@ -316,12 +321,25 @@ public class SaleOrderServiceImpl implements SaleOrderService {
                 .filter(order -> order.getCustomerId() != null)
                 .collect(Collectors.groupingBy(SaleOrder::getCustomerId));
 
+        List<SaleReturn> returns = saleReturnMapper.selectList(
+                new LambdaQueryWrapper<SaleReturn>()
+                        .in(SaleReturn::getStatus, List.of("REFUNDED", "COMPLETED"))
+        );
+        Map<UUID, List<SaleReturn>> returnsByCustomer = returns.stream()
+                .filter(saleReturn -> saleReturn.getCustomerId() != null)
+                .collect(Collectors.groupingBy(SaleReturn::getCustomerId));
+
         List<SaleReceivableStatVO> stats = ordersByCustomer.entrySet().stream().map(entry -> {
             UUID customerId = entry.getKey();
             List<SaleOrder> customerOrders = entry.getValue();
+            List<SaleReturn> customerReturns = returnsByCustomer.getOrDefault(customerId, List.of());
 
             BigDecimal orderAmount = customerOrders.stream()
                     .map(SaleOrder::getPayableAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal returnAmount = customerReturns.stream()
+                    .map(SaleReturn::getTotalAmount)
                     .filter(amount -> amount != null)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -329,10 +347,10 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             vo.setCustomerId(customerId);
             vo.setCustomerName(customerOrders.get(0).getCustomerName());
             vo.setOrderAmount(orderAmount);
-            vo.setReturnAmount(BigDecimal.ZERO);
-            vo.setNetReceivableAmount(orderAmount);
+            vo.setReturnAmount(returnAmount);
+            vo.setNetReceivableAmount(orderAmount.subtract(returnAmount));
             vo.setOrderCount((long) customerOrders.size());
-            vo.setReturnCount(0L);
+            vo.setReturnCount((long) customerReturns.size());
             return vo;
         }).toList();
 

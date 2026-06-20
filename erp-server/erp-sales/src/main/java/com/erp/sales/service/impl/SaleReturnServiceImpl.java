@@ -9,6 +9,8 @@ import com.erp.inventory.domain.entity.InventoryTransaction;
 import com.erp.inventory.mapper.InventoryTransactionMapper;
 import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
+import com.erp.production.domain.entity.ProductionProductStock;
+import com.erp.production.mapper.ProductionProductStockMapper;
 import com.erp.sales.domain.dto.SaleReturnRequest;
 import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
@@ -42,6 +44,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
     private final MaterialMapper materialMapper;
+    private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
 
     public SaleReturnServiceImpl(
@@ -50,6 +53,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             SaleOrderMapper saleOrderMapper,
             SaleOrderItemMapper saleOrderItemMapper,
             MaterialMapper materialMapper,
+            ProductionProductStockMapper productStockMapper,
             InventoryTransactionMapper inventoryTransactionMapper
     ) {
         this.saleReturnMapper = saleReturnMapper;
@@ -57,6 +61,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         this.saleOrderMapper = saleOrderMapper;
         this.saleOrderItemMapper = saleOrderItemMapper;
         this.materialMapper = materialMapper;
+        this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
     }
 
@@ -198,20 +203,15 @@ public class SaleReturnServiceImpl implements SaleReturnService {
     private void createReturnInTransactions(SaleReturn saleReturn) {
         List<SaleReturnItem> items = saleReturnItemMapper.selectBySaleReturnId(saleReturn.getId());
         for (SaleReturnItem item : items) {
-            // Find corresponding material
-            Material material = null;
-            if (item.getSkuCode() != null) {
-                List<Material> candidates = materialMapper.selectList(
-                        new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
-                if (!candidates.isEmpty()) {
-                    material = candidates.get(0);
-                }
+            BigDecimal quantity = safe(item.getQuantity());
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BizException(10004, "退货入库数量必须大于0");
             }
 
             InventoryTransaction txn = new InventoryTransaction();
             txn.setId(UUID.randomUUID());
             txn.setTransactionType("SALE_RETURN_IN");
-            txn.setQuantity(item.getQuantity()); // positive for return-in
+            txn.setQuantity(quantity);
             txn.setSourceType("SALE_RETURN");
             txn.setSourceOrderId(saleReturn.getId());
             txn.setSourceOrderNo(saleReturn.getReturnNo());
@@ -220,22 +220,60 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             txn.setCreatedBy(SecurityUtils.getUserId());
             txn.setCreatedAt(OffsetDateTime.now());
 
-            if (material != null) {
-                txn.setMaterialId(material.getId());
-                txn.setMaterialCode(material.getCode());
-                txn.setMaterialName(material.getName());
-                BigDecimal newStock = safe(material.getCurrentStock()).add(item.getQuantity());
+            ProductionProductStock productStock = findProductStock(item);
+            if (productStock != null) {
+                BigDecimal newStock = safe(productStock.getCurrentStock()).add(quantity);
+                productStock.setCurrentStock(newStock);
+                productStock.setUpdatedBy(SecurityUtils.getUserId());
+                productStock.setUpdatedAt(OffsetDateTime.now());
+                productStockMapper.updateById(productStock);
+                txn.setMaterialId(productStock.getProductId());
+                txn.setMaterialCode(productStock.getProductCode());
+                txn.setMaterialName(productStock.getProductName());
                 txn.setBalanceAfter(newStock);
-                material.setCurrentStock(newStock);
-                materialMapper.updateById(material);
-            } else {
-                txn.setMaterialCode(item.getSkuCode());
-                txn.setMaterialName(item.getProductName());
-                txn.setBalanceAfter(BigDecimal.ZERO);
-                log.info("Return SKU {} has no corresponding material, return-in recorded without stock update", item.getSkuCode());
+                inventoryTransactionMapper.insert(txn);
+                continue;
             }
+
+            Material material = findMaterialFallback(item);
+            if (material == null) {
+                throw new BizException(10004, "未找到可退货入库的成品或原料: " + item.getSkuCode());
+            }
+            BigDecimal newStock = safe(material.getCurrentStock()).add(quantity);
+            material.setCurrentStock(newStock);
+            material.setUpdatedBy(SecurityUtils.getUserId());
+            material.setUpdatedAt(OffsetDateTime.now());
+            materialMapper.updateById(material);
+            txn.setMaterialId(material.getId());
+            txn.setMaterialCode(material.getCode());
+            txn.setMaterialName(material.getName());
+            txn.setBalanceAfter(newStock);
             inventoryTransactionMapper.insert(txn);
         }
+    }
+
+    private ProductionProductStock findProductStock(SaleReturnItem item) {
+        if (item.getSkuId() != null) {
+            ProductionProductStock byProductId = productStockMapper.selectOne(
+                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, item.getSkuId()));
+            if (byProductId != null) {
+                return byProductId;
+            }
+        }
+        if (item.getSkuCode() != null && !item.getSkuCode().isBlank()) {
+            return productStockMapper.selectOne(
+                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductCode, item.getSkuCode()));
+        }
+        return null;
+    }
+
+    private Material findMaterialFallback(SaleReturnItem item) {
+        if (item.getSkuCode() == null || item.getSkuCode().isBlank()) {
+            return null;
+        }
+        List<Material> candidates = materialMapper.selectList(
+                new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
+        return candidates.isEmpty() ? null : candidates.get(0);
     }
 
     private SaleReturn getReturn(UUID id) {
