@@ -17,15 +17,16 @@ import { fetchUserInfo, login, logout } from "./src/api/auth";
 import { saveAccessToken, saveUser } from "./src/store/auth";
 import type { UserInfo } from "./src/types/auth";
 
-type OperationKey = "production" | "receipt" | "issue" | "check" | "boxPrint" | "documentPrint";
+type OperationKey = "batch" | "production" | "receipt" | "issue" | "check" | "boxPrint" | "documentPrint";
 
 const operationCards: Array<{ key: OperationKey; title: string; description: string; tag: string }> = [
+  { key: "batch", title: "创建工单", description: "按产品、数量和计划时间创建生产工单。", tag: "工单" },
   { key: "production", title: "生产执行", description: "扫描工单并提交生产报工。", tag: "车间" },
   { key: "receipt", title: "扫码入库", description: "扫描物料码、箱码或入库单。", tag: "入库" },
   { key: "issue", title: "扫码出库", description: "扫描领料单、出库单或箱码。", tag: "出库" },
   { key: "check", title: "仓库盘点", description: "按库位扫码盘点并提交差异。", tag: "盘点" },
   { key: "boxPrint", title: "箱码打印", description: "按工单生成箱码并打印标签。", tag: "打印" },
-  { key: "documentPrint", title: "单据打印", description: "打印入库单、出库单、盘点单。", tag: "单据" }
+  { key: "documentPrint", title: "出入库单据打印", description: "打印入库单、出库单、盘点单。", tag: "单据" }
 ];
 
 export default function App() {
@@ -123,6 +124,7 @@ function OperationDetail({ operation }: { operation: (typeof operationCards)[num
 
 function renderOperationSteps(operationKey: OperationKey) {
   const stepMap: Record<OperationKey, string[]> = {
+    batch: ["选择产品与 BOM", "录入计划数量", "生成生产工单"],
     production: ["扫描/选择工单", "录入良品与不良数量", "提交生产执行记录"],
     receipt: ["扫描入库单或箱码", "校验物料与数量", "确认扫码入库"],
     issue: ["扫描出库单或领料单", "校验批次与库存", "确认扫码出库"],
