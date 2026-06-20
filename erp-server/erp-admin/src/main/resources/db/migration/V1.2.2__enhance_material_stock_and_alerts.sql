@@ -1,2 +1,0 @@
-ALTER TABLE material
-    ADD COLUMN IF NOT EXISTS current_stock NUMERIC(12,2) DEFAULT 0;

@@ -3,6 +3,7 @@ export interface PageResult<T> {
   total: number;
   pageNum: number;
   pageSize: number;
+  pages?: number;
 }
 
 export interface PageQuery {

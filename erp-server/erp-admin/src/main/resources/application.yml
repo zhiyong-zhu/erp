@@ -19,7 +19,7 @@ spring:
     password: guest
   liquibase:
     enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.yaml
+    change-log: classpath:db/changelog-master.xml
   jackson:
     time-zone: Asia/Shanghai
 
