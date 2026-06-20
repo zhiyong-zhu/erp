@@ -17,6 +17,9 @@ public class InventoryTransactionVO {
     private String sourceOrderNo;
     private UUID sourceItemId;
     private UUID receiptId;
+    private UUID issueId;
+    private UUID transferId;
+    private UUID checkId;
     private String remark;
     private OffsetDateTime createdAt;
 
@@ -44,6 +47,12 @@ public class InventoryTransactionVO {
     public void setSourceItemId(UUID sourceItemId) { this.sourceItemId = sourceItemId; }
     public UUID getReceiptId() { return receiptId; }
     public void setReceiptId(UUID receiptId) { this.receiptId = receiptId; }
+    public UUID getIssueId() { return issueId; }
+    public void setIssueId(UUID issueId) { this.issueId = issueId; }
+    public UUID getTransferId() { return transferId; }
+    public void setTransferId(UUID transferId) { this.transferId = transferId; }
+    public UUID getCheckId() { return checkId; }
+    public void setCheckId(UUID checkId) { this.checkId = checkId; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

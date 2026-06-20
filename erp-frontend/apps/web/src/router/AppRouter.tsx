@@ -5,8 +5,11 @@ import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURC
 import { fetchUserInfo, refreshTokens } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
+import { InventoryCheckPage } from "../pages/inventory/checks/InventoryCheckPage";
+import { InventoryIssuePage } from "../pages/inventory/issues/InventoryIssuePage";
 import { InventoryReceiptPage } from "../pages/inventory/receipts/InventoryReceiptPage";
 import { InventoryTransactionPage } from "../pages/inventory/transactions/InventoryTransactionPage";
+import { InventoryTransferPage } from "../pages/inventory/transfers/InventoryTransferPage";
 import { LoginPage } from "../pages/login/LoginPage";
 import { MaterialAlertPage } from "../pages/material/alerts/MaterialAlertPage";
 import { MaterialCategoryPage } from "../pages/material/categories/MaterialCategoryPage";
@@ -193,6 +196,9 @@ export function AppRouter() {
             <Route path="/material/quotes" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.QUOTE_LIST}><SupplierQuotePage /></PermissionGuard>} />
             <Route path="/material/suppliers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.SUPPLIER_LIST}><SupplierManagementPage /></PermissionGuard>} />
             <Route path="/inventory/receipts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryReceiptPage /></PermissionGuard>} />
+            <Route path="/inventory/issues" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryIssuePage /></PermissionGuard>} />
+            <Route path="/inventory/transfers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryTransferPage /></PermissionGuard>} />
+            <Route path="/inventory/checks" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryCheckPage /></PermissionGuard>} />
             <Route path="/inventory/transactions" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryTransactionPage /></PermissionGuard>} />
             <Route path="/sales/customers" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.CUSTOMER_LIST}><CustomerPage /></PermissionGuard>} />
             <Route path="/sales/orders" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.ORDER_LIST}><SaleOrderPage /></PermissionGuard>} />

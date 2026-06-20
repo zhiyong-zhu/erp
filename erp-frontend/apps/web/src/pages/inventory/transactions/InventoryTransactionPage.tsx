@@ -47,6 +47,9 @@ export function InventoryTransactionPage() {
     { title: "结存数量", dataIndex: "balanceAfter", key: "balanceAfter", width: 120 },
     { title: "来源类型", dataIndex: "sourceType", key: "sourceType", width: 120 },
     { title: "来源单号", dataIndex: "sourceOrderNo", key: "sourceOrderNo", width: 180 },
+    { title: "出库单ID", dataIndex: "issueId", key: "issueId", width: 220 },
+    { title: "调拨单ID", dataIndex: "transferId", key: "transferId", width: 220 },
+    { title: "盘点单ID", dataIndex: "checkId", key: "checkId", width: 220 },
     { title: "备注", dataIndex: "remark", key: "remark" },
     { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 180 }
   ];

@@ -154,6 +154,15 @@ export function AppLayout() {
           hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
             ? { key: "/inventory/receipts", icon: <ProfileOutlined />, label: "正式入库单", onClick: () => navigate("/inventory/receipts") }
             : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+            ? { key: "/inventory/issues", icon: <ProfileOutlined />, label: "出库管理", onClick: () => navigate("/inventory/issues") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+            ? { key: "/inventory/transfers", icon: <ProfileOutlined />, label: "调拨管理", onClick: () => navigate("/inventory/transfers") }
+            : null,
+          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+            ? { key: "/inventory/checks", icon: <ProfileOutlined />, label: "盘点管理", onClick: () => navigate("/inventory/checks") }
+            : null,
           hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
             ? { key: "/inventory/transactions", icon: <ProfileOutlined />, label: "库存流水", onClick: () => navigate("/inventory/transactions") }
             : null
@@ -233,6 +242,12 @@ export function AppLayout() {
     selectedKeys = ["/material/suppliers"];
   } else if (location.pathname.startsWith("/inventory/receipts")) {
     selectedKeys = ["/inventory/receipts"];
+  } else if (location.pathname.startsWith("/inventory/issues")) {
+    selectedKeys = ["/inventory/issues"];
+  } else if (location.pathname.startsWith("/inventory/transfers")) {
+    selectedKeys = ["/inventory/transfers"];
+  } else if (location.pathname.startsWith("/inventory/checks")) {
+    selectedKeys = ["/inventory/checks"];
   } else if (location.pathname.startsWith("/inventory/transactions")) {
     selectedKeys = ["/inventory/transactions"];
   } else if (location.pathname.startsWith("/sales/customers")) {
