@@ -250,6 +250,8 @@ select {
   padding: 22px;
   border-radius: 24px;
   background: linear-gradient(180deg, #ecfeff 0%, #f8fafc 100%);
+  max-height: calc(100vh - 210px);
+  overflow: auto;
 }
 
 .desktop-operation-panel h2,
@@ -305,13 +307,101 @@ select {
 }
 
 .desktop-mini-form input,
-.desktop-mini-form select {
+.desktop-mini-form select,
+.desktop-inline-search input,
+.desktop-doc-select select {
   height: 42px;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   padding: 0 12px;
   outline: none;
   background: #fff;
+}
+
+.desktop-panel-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.desktop-panel-form label {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.desktop-field-wide {
+  grid-column: 1 / -1;
+}
+
+.desktop-panel-stack,
+.desktop-record-list,
+.desktop-recent {
+  display: grid;
+  gap: 12px;
+}
+
+.desktop-inline-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.desktop-record-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.desktop-record-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dbe7ee;
+  border-radius: 16px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  background: #fff;
+  color: #0f172a;
+}
+
+.desktop-record-card.active {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+}
+
+.desktop-record-card span,
+.desktop-record-card small,
+.desktop-selected-card span,
+.desktop-selected-card small,
+.desktop-recent span {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.desktop-selected-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+}
+
+.desktop-recent {
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.desktop-doc-select {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.desktop-alert-success {
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .desktop-list-item {
@@ -362,6 +452,11 @@ select {
   }
 
   .desktop-operation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-panel-form,
+  .desktop-inline-search {
     grid-template-columns: 1fr;
   }
 }
