@@ -12,9 +12,12 @@ public class PurchaseOrderReceiveRequest extends BaseDTO {
     @Valid
     @NotEmpty(message = "收货明细不能为空")
     private List<ReceiveItem> items;
+    private String idempotencyKey;
 
     public List<ReceiveItem> getItems() { return items; }
     public void setItems(List<ReceiveItem> items) { this.items = items; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
 
     public static class ReceiveItem {
         @NotNull(message = "采购明细不能为空")

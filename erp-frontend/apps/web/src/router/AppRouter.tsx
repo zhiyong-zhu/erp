@@ -1,15 +1,18 @@
 import { App as AntApp } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { INVENTORY_PERMISSIONS, MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { fetchUserInfo, refreshTokens } from "../api/auth";
 import { PermissionGuard, RequireAuth } from "../components/AuthGuard";
 import { AppLayout } from "../layouts/AppLayout";
+import { DashboardPage } from "../pages/dashboard/DashboardPage";
 import { InventoryCheckPage } from "../pages/inventory/checks/InventoryCheckPage";
 import { InventoryIssuePage } from "../pages/inventory/issues/InventoryIssuePage";
+import { InventoryLocationPage } from "../pages/inventory/locations/InventoryLocationPage";
 import { InventoryReceiptPage } from "../pages/inventory/receipts/InventoryReceiptPage";
 import { InventoryTransactionPage } from "../pages/inventory/transactions/InventoryTransactionPage";
 import { InventoryTransferPage } from "../pages/inventory/transfers/InventoryTransferPage";
+import { InventoryWarehousePage } from "../pages/inventory/warehouses/InventoryWarehousePage";
 import { LoginPage } from "../pages/login/LoginPage";
 import { MaterialAlertPage } from "../pages/material/alerts/MaterialAlertPage";
 import { MaterialCategoryPage } from "../pages/material/categories/MaterialCategoryPage";
@@ -45,6 +48,9 @@ import { SaleReportPage } from "../pages/sales/reports/SaleReportPage";
 import { EcommerceShopPage } from "../pages/sales/ecommerce/EcommerceShopPage";
 
 function resolveDefaultRoute() {
+  if (getAuthState().user) {
+    return "/dashboard";
+  }
   const permissions = getAuthState().user?.permissions ?? [];
   if (permissions.includes(SYSTEM_PERMISSIONS.USER_LIST)) {
     return "/system/users";
@@ -90,6 +96,15 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(PURCHASE_PERMISSIONS.EXCEPTION_LIST)) {
     return "/purchase/exceptions";
+  }
+  if (permissions.includes(INVENTORY_PERMISSIONS.WAREHOUSE_LIST)) {
+    return "/inventory/warehouses";
+  }
+  if (permissions.includes(INVENTORY_PERMISSIONS.RECEIPT_LIST)) {
+    return "/inventory/receipts";
+  }
+  if (permissions.includes(INVENTORY_PERMISSIONS.TRANSACTION_LIST)) {
+    return "/inventory/transactions";
   }
   if (permissions.includes(SALES_PERMISSIONS.ORDER_LIST)) {
     return "/sales/orders";
@@ -180,6 +195,7 @@ export function AppRouter() {
             }
           >
             <Route index element={<Navigate to={resolveDefaultRoute()} replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/system/users" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.USER_LIST}><UserManagementPage /></PermissionGuard>} />
             <Route path="/system/departments" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.DEPT_LIST}><DepartmentManagementPage /></PermissionGuard>} />
             <Route path="/system/roles" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.ROLE_LIST}><RoleManagementPage /></PermissionGuard>} />
@@ -197,17 +213,19 @@ export function AppRouter() {
             <Route path="/purchase/exceptions" element={<PermissionGuard bootstrapping={bootstrapping} permission={PURCHASE_PERMISSIONS.EXCEPTION_LIST}><PurchaseExceptionPage /></PermissionGuard>} />
             <Route path="/material/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.CATEGORY_LIST}><MaterialCategoryPage /></PermissionGuard>} />
             <Route path="/material/materials" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialManagementPage /></PermissionGuard>} />
-            <Route path="/material/inventory" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialInventoryPage /></PermissionGuard>} />
+            <Route path="/material/inventory" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.TRANSACTION_LIST}><MaterialInventoryPage /></PermissionGuard>} />
             <Route path="/material/safety-stock" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><MaterialSafetyStockPage /></PermissionGuard>} />
             <Route path="/material/alerts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.ALERT_LIST}><MaterialAlertPage /></PermissionGuard>} />
             <Route path="/material/replenishment" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.REPLENISH_LIST}><MaterialReplenishmentPage /></PermissionGuard>} />
             <Route path="/material/quotes" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.QUOTE_LIST}><SupplierQuotePage /></PermissionGuard>} />
             <Route path="/material/suppliers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.SUPPLIER_LIST}><SupplierManagementPage /></PermissionGuard>} />
-            <Route path="/inventory/receipts" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryReceiptPage /></PermissionGuard>} />
-            <Route path="/inventory/issues" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryIssuePage /></PermissionGuard>} />
-            <Route path="/inventory/transfers" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryTransferPage /></PermissionGuard>} />
-            <Route path="/inventory/checks" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_UPDATE}><InventoryCheckPage /></PermissionGuard>} />
-            <Route path="/inventory/transactions" element={<PermissionGuard bootstrapping={bootstrapping} permission={MATERIAL_PERMISSIONS.MATERIAL_LIST}><InventoryTransactionPage /></PermissionGuard>} />
+            <Route path="/inventory/warehouses" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.WAREHOUSE_LIST}><InventoryWarehousePage /></PermissionGuard>} />
+            <Route path="/inventory/locations" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.LOCATION_LIST}><InventoryLocationPage /></PermissionGuard>} />
+            <Route path="/inventory/receipts" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.RECEIPT_LIST}><InventoryReceiptPage /></PermissionGuard>} />
+            <Route path="/inventory/issues" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.ISSUE_LIST}><InventoryIssuePage /></PermissionGuard>} />
+            <Route path="/inventory/transfers" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.TRANSFER_LIST}><InventoryTransferPage /></PermissionGuard>} />
+            <Route path="/inventory/checks" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.CHECK_LIST}><InventoryCheckPage /></PermissionGuard>} />
+            <Route path="/inventory/transactions" element={<PermissionGuard bootstrapping={bootstrapping} permission={INVENTORY_PERMISSIONS.TRANSACTION_LIST}><InventoryTransactionPage /></PermissionGuard>} />
             <Route path="/sales/customers" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.CUSTOMER_LIST}><CustomerPage /></PermissionGuard>} />
             <Route path="/sales/orders" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.ORDER_LIST}><SaleOrderPage /></PermissionGuard>} />
             <Route path="/sales/returns" element={<PermissionGuard bootstrapping={bootstrapping} permission={SALES_PERMISSIONS.RETURN_LIST}><SaleReturnPage /></PermissionGuard>} />

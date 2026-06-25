@@ -8,6 +8,7 @@ import {
   fetchInventoryChecks,
   fetchInventoryIssues,
   fetchInventoryReceipts,
+  fetchInventoryTransfers,
   fetchMaterials,
   fetchProductPackages,
   fetchProducts,
@@ -21,6 +22,7 @@ import type {
   InventoryCheckRecord,
   InventoryIssueRecord,
   InventoryReceiptRecord,
+  InventoryTransferRecord,
   MaterialRecord,
   ProductPackageRecord,
   ProductRecord,
@@ -36,6 +38,7 @@ import { ProductionPanel } from "./operations/ProductionPanel";
 import type { BatchFormState, BoxFormState, CheckFormState, IssueFormState, OperationKey, ReportFormState } from "./operations/operationConfig";
 import { operationCards } from "./operations/operationConfig";
 import { defaultBatchNo, openPrintWindow, toNumber, today } from "./operations/operationUtils";
+import type { PrintableDocumentType } from "./operations/operationUtils";
 
 export function OperationWorkspace({ loading, user, onLogout }: { loading: boolean; user: UserInfo; onLogout: () => void }) {
   const [activeOperation, setActiveOperation] = useState<OperationKey>("production");
@@ -48,11 +51,12 @@ export function OperationWorkspace({ loading, user, onLogout }: { loading: boole
   const [boxes, setBoxes] = useState<ProductionBoxRecord[]>([]);
   const [receipts, setReceipts] = useState<InventoryReceiptRecord[]>([]);
   const [issues, setIssues] = useState<InventoryIssueRecord[]>([]);
+  const [transfers, setTransfers] = useState<InventoryTransferRecord[]>([]);
   const [checks, setChecks] = useState<InventoryCheckRecord[]>([]);
   const [batchNoQuery, setBatchNoQuery] = useState("");
   const [materialQuery, setMaterialQuery] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState("");
-  const [selectedDocumentType, setSelectedDocumentType] = useState<"receipt" | "issue" | "check">("receipt");
+  const [selectedDocumentType, setSelectedDocumentType] = useState<PrintableDocumentType>("receipt");
   const [batchForm, setBatchForm] = useState<BatchFormState>({
     batchNo: defaultBatchNo(),
     productId: "",
@@ -109,13 +113,14 @@ export function OperationWorkspace({ loading, user, onLogout }: { loading: boole
   async function loadAll() {
     setBusy(true);
     try {
-      const [productPage, materialPage, batchPage, boxPage, receiptPage, issuePage, checkPage] = await Promise.all([
+      const [productPage, materialPage, batchPage, boxPage, receiptPage, issuePage, transferPage, checkPage] = await Promise.all([
         fetchProducts(),
         fetchMaterials(),
         fetchProductionBatches(),
         fetchProductionBoxes(),
         fetchInventoryReceipts(),
         fetchInventoryIssues(),
+        fetchInventoryTransfers(),
         fetchInventoryChecks()
       ]);
       setProducts(productPage.records);
@@ -124,6 +129,7 @@ export function OperationWorkspace({ loading, user, onLogout }: { loading: boole
       setBoxes(boxPage.records);
       setReceipts(receiptPage.records);
       setIssues(issuePage.records);
+      setTransfers(transferPage.records);
       setChecks(checkPage.records);
       if (batchPage.records[0]) {
         setSelectedBatchId(batchPage.records[0].id);
@@ -354,6 +360,7 @@ export function OperationWorkspace({ loading, user, onLogout }: { loading: boole
                 checks={checks}
                 issues={issues}
                 receipts={receipts}
+                transfers={transfers}
                 selectedDocumentType={selectedDocumentType}
                 onDocumentTypeChange={setSelectedDocumentType}
               />

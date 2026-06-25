@@ -5,6 +5,7 @@ import type {
   InventoryIssuePayload,
   InventoryIssueRecord,
   InventoryReceiptRecord,
+  InventoryTransferRecord,
   LabelPrintResult,
   LabelTemplateRecord,
   MaterialRecord,
@@ -77,6 +78,10 @@ export function fetchInventoryReceipts() {
 
 export function fetchInventoryIssues() {
   return request<Paged<InventoryIssueRecord>>(withQuery("/inventory/issues", { pageNum: 1, pageSize: 10 }));
+}
+
+export function fetchInventoryTransfers() {
+  return request<Paged<InventoryTransferRecord>>(withQuery("/inventory/transfers", { pageNum: 1, pageSize: 10 }));
 }
 
 export function createInventoryIssue(payload: InventoryIssuePayload) {

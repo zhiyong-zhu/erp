@@ -7,6 +7,8 @@ import { createInventoryIssue, fetchInventoryIssues } from "../../../api/invento
 import { fetchMaterials } from "../../../api/material";
 import type { InventoryIssuePayload, InventoryIssueRecord } from "../../../types/inventory";
 import type { MaterialRecord } from "../../../types/material";
+import { printInventoryDocument } from "../../../utils/documentPrint";
+import { useInventoryPositions } from "../components/useInventoryPositions";
 
 const { Title, Text } = Typography;
 
@@ -26,6 +28,7 @@ export function InventoryIssuePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [materials, setMaterials] = useState<MaterialRecord[]>([]);
   const { message } = App.useApp();
+  const { locationOptions, loadPositions, applyLocation } = useInventoryPositions();
 
   const materialOptions = useMemo(
     () => materials.map((item) => ({
@@ -38,6 +41,7 @@ export function InventoryIssuePage() {
   useEffect(() => {
     void loadData();
     void loadMaterials();
+    void loadPositions();
   }, []);
 
   async function loadData(nextPageNum = pageNum, nextPageSize = pageSize) {
@@ -64,9 +68,10 @@ export function InventoryIssuePage() {
     }
   }
 
-  async function handleCreate(values: InventoryIssuePayload) {
+  async function handleCreate(values: InventoryIssuePayload & { locationId?: string }) {
     try {
-      await createInventoryIssue(values);
+      const payload = normalizeIssuePayload(applyLocation(values, values.locationId));
+      await createInventoryIssue(payload);
       message.success("出库成功");
       setCreateOpen(false);
       await loadData(1, pageSize);
@@ -88,6 +93,7 @@ export function InventoryIssuePage() {
       render: (value: string) => issueTypeOptions.find((item) => item.value === value)?.label ?? value
     },
     { title: "来源单号", dataIndex: "sourceOrderNo", key: "sourceOrderNo", width: 180 },
+    { title: "幂等键", dataIndex: "idempotencyKey", key: "idempotencyKey", width: 200, render: (value?: string | null) => value || "-" },
     { title: "出库总量", dataIndex: "totalQuantity", key: "totalQuantity", width: 120 },
     {
       title: "状态",
@@ -97,7 +103,14 @@ export function InventoryIssuePage() {
       render: (value: string) => <Tag color={value === "COMPLETED" ? "green" : "default"}>{value}</Tag>
     },
     { title: "备注", dataIndex: "remark", key: "remark" },
-    { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 180 }
+    { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 180 },
+    {
+      title: "操作",
+      key: "actions",
+      width: 90,
+      fixed: "right",
+      render: (_, record) => <Button type="link" onClick={() => printInventoryDocument("issue", record)}>打印</Button>
+    }
   ];
 
   return (
@@ -117,6 +130,7 @@ export function InventoryIssuePage() {
         columns={columns}
         dataSource={records}
         loading={loading}
+        scroll={{ x: 1200 }}
         pagination={{
           current: pageNum,
           pageSize,
@@ -131,7 +145,12 @@ export function InventoryIssuePage() {
         title="新建出库"
         open={createOpen}
         modalProps={{ destroyOnHidden: true, onCancel: () => setCreateOpen(false), width: 760 }}
-        initialValues={{ issueType: "MANUAL_OUT", items: [{}] }}
+        initialValues={{
+          issueType: "MANUAL_OUT",
+          batchNo: "DEFAULT",
+          idempotencyKey: `issue-${Date.now()}`,
+          items: [{}]
+        }}
         onFinish={handleCreate}
       >
         <ProFormSelect
@@ -141,6 +160,14 @@ export function InventoryIssuePage() {
           rules={[{ required: true, message: "请选择出库类型" }]}
         />
         <ProFormText name="sourceOrderNo" label="来源单号" placeholder="可选，如生产工单号/调整单号" />
+        <ProFormText name="idempotencyKey" label="幂等键" tooltip="重复提交时用于避免重复扣减库存" rules={[{ required: true, message: "请输入幂等键" }]} />
+        <ProFormSelect
+          name="locationId"
+          label="出库库位"
+          options={locationOptions}
+          rules={[{ required: true, message: "请选择出库库位" }]}
+        />
+        <ProFormText name="batchNo" label="批次" rules={[{ required: true, message: "请输入批次" }]} />
         <ProFormText name="remark" label="备注" />
         <ProFormList
           name="items"
@@ -189,4 +216,12 @@ export function InventoryIssuePage() {
       </ModalForm>
     </section>
   );
+}
+
+function normalizeIssuePayload(values: Record<string, any>): InventoryIssuePayload {
+  const { locationId: _locationId, warehouseId: _warehouseId, items, ...rest } = values;
+  return {
+    ...rest,
+    items: items ?? []
+  } as InventoryIssuePayload;
 }

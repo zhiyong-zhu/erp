@@ -11,7 +11,13 @@ public class InventoryTransactionVO {
     private String materialName;
     private String transactionType;
     private BigDecimal quantity;
+    private BigDecimal balanceBefore;
     private BigDecimal balanceAfter;
+    private String warehouseCode;
+    private String warehouseName;
+    private String locationCode;
+    private String locationName;
+    private String batchNo;
     private String sourceType;
     private UUID sourceOrderId;
     private String sourceOrderNo;
@@ -20,6 +26,7 @@ public class InventoryTransactionVO {
     private UUID issueId;
     private UUID transferId;
     private UUID checkId;
+    private String idempotencyKey;
     private String remark;
     private OffsetDateTime createdAt;
 
@@ -35,8 +42,20 @@ public class InventoryTransactionVO {
     public void setTransactionType(String transactionType) { this.transactionType = transactionType; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+    public BigDecimal getBalanceBefore() { return balanceBefore; }
+    public void setBalanceBefore(BigDecimal balanceBefore) { this.balanceBefore = balanceBefore; }
     public BigDecimal getBalanceAfter() { return balanceAfter; }
     public void setBalanceAfter(BigDecimal balanceAfter) { this.balanceAfter = balanceAfter; }
+    public String getWarehouseCode() { return warehouseCode; }
+    public void setWarehouseCode(String warehouseCode) { this.warehouseCode = warehouseCode; }
+    public String getWarehouseName() { return warehouseName; }
+    public void setWarehouseName(String warehouseName) { this.warehouseName = warehouseName; }
+    public String getLocationCode() { return locationCode; }
+    public void setLocationCode(String locationCode) { this.locationCode = locationCode; }
+    public String getLocationName() { return locationName; }
+    public void setLocationName(String locationName) { this.locationName = locationName; }
+    public String getBatchNo() { return batchNo; }
+    public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
     public String getSourceType() { return sourceType; }
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public UUID getSourceOrderId() { return sourceOrderId; }
@@ -53,6 +72,8 @@ public class InventoryTransactionVO {
     public void setTransferId(UUID transferId) { this.transferId = transferId; }
     public UUID getCheckId() { return checkId; }
     public void setCheckId(UUID checkId) { this.checkId = checkId; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

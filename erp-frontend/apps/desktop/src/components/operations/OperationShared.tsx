@@ -2,10 +2,11 @@ import type {
   InventoryCheckRecord,
   InventoryIssueRecord,
   InventoryReceiptRecord,
+  InventoryTransferRecord,
   MaterialRecord,
   ProductionBatchRecord
 } from "../../types/operations";
-import { documentNo, documentSummary, formatStatus, printDocument } from "./operationUtils";
+import { documentNo, documentSummary, formatStatus, printDocument, type PrintableDocumentType } from "./operationUtils";
 
 export function MaterialSearch({ busy, query, onQueryChange, onSearch }: { busy: boolean; query: string; onQueryChange: (value: string) => void; onSearch: () => void }) {
   return (
@@ -66,14 +67,16 @@ export function DocumentList({
   type,
   receipts,
   issues,
+  transfers,
   checks
 }: {
-  type: "receipt" | "issue" | "check";
+  type: PrintableDocumentType;
   receipts: InventoryReceiptRecord[];
   issues: InventoryIssueRecord[];
+  transfers: InventoryTransferRecord[];
   checks: InventoryCheckRecord[];
 }) {
-  const records = type === "receipt" ? receipts : type === "issue" ? issues : checks;
+  const records = type === "receipt" ? receipts : type === "issue" ? issues : type === "transfer" ? transfers : checks;
   return (
     <div className="desktop-record-list">
       {records.length ? records.map((record) => (

@@ -104,8 +104,18 @@ export async function fetchShippingOrders(query: PageQuery): Promise<PageResult<
   return response.data.data;
 }
 
+export async function exportShippingOrders(): Promise<Blob> {
+  const response = await http.get("/sales/shipping/export", { responseType: "blob" });
+  return response.data;
+}
+
 export async function fetchShippingOrderDetail(id: string): Promise<ShippingRecord> {
   const response = await http.get<ApiResponse<ShippingRecord>>(`/sales/shipping/${id}`);
+  return response.data.data;
+}
+
+export async function reviewShippingOrder(id: string): Promise<ShippingRecord> {
+  const response = await http.post<ApiResponse<ShippingRecord>>(`/sales/shipping/${id}/review`);
   return response.data.data;
 }
 

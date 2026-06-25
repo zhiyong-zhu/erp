@@ -10,6 +10,7 @@ public class InventoryIssueVO {
     private String issueType;
     private UUID sourceOrderId;
     private String sourceOrderNo;
+    private String idempotencyKey;
     private String status;
     private BigDecimal totalQuantity;
     private String remark;
@@ -25,6 +26,8 @@ public class InventoryIssueVO {
     public void setSourceOrderId(UUID sourceOrderId) { this.sourceOrderId = sourceOrderId; }
     public String getSourceOrderNo() { return sourceOrderNo; }
     public void setSourceOrderNo(String sourceOrderNo) { this.sourceOrderNo = sourceOrderNo; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public BigDecimal getTotalQuantity() { return totalQuantity; }

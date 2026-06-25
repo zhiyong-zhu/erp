@@ -12,4 +12,7 @@ import org.apache.ibatis.annotations.Select;
 public interface ProductSkuMapper extends BaseMapper<ProductSku> {
     @Select("SELECT * FROM product_sku WHERE product_id = CAST(#{productId} AS uuid) ORDER BY created_at ASC")
     List<ProductSku> selectByProductId(@Param("productId") UUID productId);
+
+    @Select("SELECT * FROM product_sku WHERE sku_code = #{skuCode} LIMIT 1")
+    ProductSku selectBySkuCode(@Param("skuCode") String skuCode);
 }

@@ -8,8 +8,14 @@ public class InventoryReceiptCreateRequest {
     private String sourceType;
     private UUID sourceOrderId;
     private String sourceOrderNo;
+    private String idempotencyKey;
     private UUID supplierId;
     private String supplierName;
+    private String warehouseCode;
+    private String warehouseName;
+    private String locationCode;
+    private String locationName;
+    private String batchNo;
     private String remark;
     private List<Item> items;
 
@@ -19,10 +25,22 @@ public class InventoryReceiptCreateRequest {
     public void setSourceOrderId(UUID sourceOrderId) { this.sourceOrderId = sourceOrderId; }
     public String getSourceOrderNo() { return sourceOrderNo; }
     public void setSourceOrderNo(String sourceOrderNo) { this.sourceOrderNo = sourceOrderNo; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
     public UUID getSupplierId() { return supplierId; }
     public void setSupplierId(UUID supplierId) { this.supplierId = supplierId; }
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+    public String getWarehouseCode() { return warehouseCode; }
+    public void setWarehouseCode(String warehouseCode) { this.warehouseCode = warehouseCode; }
+    public String getWarehouseName() { return warehouseName; }
+    public void setWarehouseName(String warehouseName) { this.warehouseName = warehouseName; }
+    public String getLocationCode() { return locationCode; }
+    public void setLocationCode(String locationCode) { this.locationCode = locationCode; }
+    public String getLocationName() { return locationName; }
+    public void setLocationName(String locationName) { this.locationName = locationName; }
+    public String getBatchNo() { return batchNo; }
+    public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public List<Item> getItems() { return items; }
@@ -34,6 +52,11 @@ public class InventoryReceiptCreateRequest {
         private String materialName;
         private UUID sourceItemId;
         private BigDecimal quantity;
+        private String warehouseCode;
+        private String warehouseName;
+        private String locationCode;
+        private String locationName;
+        private String batchNo;
 
         public UUID getMaterialId() { return materialId; }
         public void setMaterialId(UUID materialId) { this.materialId = materialId; }
@@ -45,5 +68,15 @@ public class InventoryReceiptCreateRequest {
         public void setSourceItemId(UUID sourceItemId) { this.sourceItemId = sourceItemId; }
         public BigDecimal getQuantity() { return quantity; }
         public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+        public String getWarehouseCode() { return warehouseCode; }
+        public void setWarehouseCode(String warehouseCode) { this.warehouseCode = warehouseCode; }
+        public String getWarehouseName() { return warehouseName; }
+        public void setWarehouseName(String warehouseName) { this.warehouseName = warehouseName; }
+        public String getLocationCode() { return locationCode; }
+        public void setLocationCode(String locationCode) { this.locationCode = locationCode; }
+        public String getLocationName() { return locationName; }
+        public void setLocationName(String locationName) { this.locationName = locationName; }
+        public String getBatchNo() { return batchNo; }
+        public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
     }
 }

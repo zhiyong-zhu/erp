@@ -11,6 +11,7 @@ public class InventoryReceiptVO {
     private String sourceOrderNo;
     private UUID supplierId;
     private String supplierName;
+    private String idempotencyKey;
     private String status;
     private String remark;
     private OffsetDateTime createdAt;
@@ -29,6 +30,8 @@ public class InventoryReceiptVO {
     public void setSupplierId(UUID supplierId) { this.supplierId = supplierId; }
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getRemark() { return remark; }

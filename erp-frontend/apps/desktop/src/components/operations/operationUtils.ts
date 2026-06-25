@@ -1,4 +1,4 @@
-import type { InventoryCheckRecord, InventoryIssueRecord, InventoryReceiptRecord } from "../../types/operations";
+import type { InventoryCheckRecord, InventoryIssueRecord, InventoryReceiptRecord, InventoryTransferRecord } from "../../types/operations";
 
 export function defaultBatchNo() {
   const now = new Date();
@@ -25,13 +25,17 @@ export function formatStatus(status: string) {
   return statusMap[status] ?? status;
 }
 
-export function documentNo(type: "receipt" | "issue" | "check", record: InventoryReceiptRecord | InventoryIssueRecord | InventoryCheckRecord) {
+export type PrintableDocumentType = "receipt" | "issue" | "transfer" | "check";
+export type PrintableDocumentRecord = InventoryReceiptRecord | InventoryIssueRecord | InventoryTransferRecord | InventoryCheckRecord;
+
+export function documentNo(type: PrintableDocumentType, record: PrintableDocumentRecord) {
   if (type === "receipt") return (record as InventoryReceiptRecord).receiptNo;
   if (type === "issue") return (record as InventoryIssueRecord).issueNo;
+  if (type === "transfer") return (record as InventoryTransferRecord).transferNo;
   return (record as InventoryCheckRecord).checkNo;
 }
 
-export function documentSummary(type: "receipt" | "issue" | "check", record: InventoryReceiptRecord | InventoryIssueRecord | InventoryCheckRecord) {
+export function documentSummary(type: PrintableDocumentType, record: PrintableDocumentRecord) {
   if (type === "receipt") {
     const receipt = record as InventoryReceiptRecord;
     return `${receipt.sourceType} · ${receipt.sourceOrderNo ?? "-"} · ${receipt.status}`;
@@ -40,21 +44,37 @@ export function documentSummary(type: "receipt" | "issue" | "check", record: Inv
     const issue = record as InventoryIssueRecord;
     return `${issue.issueType} · 数量 ${issue.totalQuantity} · ${issue.status}`;
   }
+  if (type === "transfer") {
+    const transfer = record as InventoryTransferRecord;
+    return `${transfer.fromLocation} → ${transfer.toLocation} · 数量 ${transfer.totalQuantity} · ${transfer.status}`;
+  }
   const check = record as InventoryCheckRecord;
   return `${check.checkType} · 差异 ${check.totalDifference} · ${check.status}`;
 }
 
-export function printDocument(type: "receipt" | "issue" | "check", record: InventoryReceiptRecord | InventoryIssueRecord | InventoryCheckRecord) {
-  const title = type === "receipt" ? "入库单" : type === "issue" ? "出库单" : "盘点单";
+export function printDocument(type: PrintableDocumentType, record: PrintableDocumentRecord) {
+  const title = type === "receipt" ? "入库单" : type === "issue" ? "出库单" : type === "transfer" ? "调拨单" : "盘点单";
   const html = `
-    <main style="font-family: system-ui, sans-serif; padding: 24px;">
-      <h1>${title}</h1>
-      <p>单号：${documentNo(type, record)}</p>
-      <p>${documentSummary(type, record)}</p>
-      <p>打印时间：${new Date().toLocaleString()}</p>
+    <main style="font-family: system-ui, sans-serif; padding: 24px; color: #111827;">
+      <h1 style="text-align:center;margin:0 0 24px;">${title}</h1>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tbody>
+          <tr><th style="${cellStyle()}">单号</th><td style="${cellStyle()}">${documentNo(type, record)}</td></tr>
+          <tr><th style="${cellStyle()}">摘要</th><td style="${cellStyle()}">${documentSummary(type, record)}</td></tr>
+          <tr><th style="${cellStyle()}">备注</th><td style="${cellStyle()}">${"remark" in record && record.remark ? record.remark : "-"}</td></tr>
+          <tr><th style="${cellStyle()}">打印时间</th><td style="${cellStyle()}">${new Date().toLocaleString()}</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex;justify-content:space-between;margin-top:48px;">
+        <span>制单：</span><span>复核：</span><span>经办：</span>
+      </div>
     </main>
   `;
   openPrintWindow(title, html);
+}
+
+function cellStyle() {
+  return "border:1px solid #d1d5db;padding:10px;text-align:left;";
 }
 
 export function openPrintWindow(title: string, html: string) {

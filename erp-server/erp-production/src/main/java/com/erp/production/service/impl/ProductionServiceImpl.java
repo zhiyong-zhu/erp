@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
+import com.erp.common.report.excel.ExcelExportUtils;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.inventory.domain.entity.InventoryTransaction;
 import com.erp.inventory.mapper.InventoryTransactionMapper;
@@ -50,7 +51,9 @@ import com.erp.production.mapper.ProductionProcessMapper;
 import com.erp.production.mapper.ProductionProcessStepMapper;
 import com.erp.production.mapper.ProductionReportMapper;
 import com.erp.production.mapper.SerialNumberMapper;
+import com.erp.production.service.ProductionSerialNumberService;
 import com.erp.production.service.ProductionService;
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -81,6 +84,7 @@ public class ProductionServiceImpl implements ProductionService {
     private final ProductionReportMapper reportMapper;
     private final SerialNumberMapper serialNumberMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
+    private final ProductionSerialNumberService serialNumberService;
 
     public ProductionServiceImpl(ProductMapper productMapper,
                                  ProductPackageMapper productPackageMapper,
@@ -94,7 +98,8 @@ public class ProductionServiceImpl implements ProductionService {
                                  ProductionProductStockMapper productStockMapper,
                                  ProductionReportMapper reportMapper,
                                  SerialNumberMapper serialNumberMapper,
-                                 InventoryTransactionMapper inventoryTransactionMapper) {
+                                 InventoryTransactionMapper inventoryTransactionMapper,
+                                 ProductionSerialNumberService serialNumberService) {
         this.productMapper = productMapper;
         this.productPackageMapper = productPackageMapper;
         this.materialMapper = materialMapper;
@@ -108,6 +113,7 @@ public class ProductionServiceImpl implements ProductionService {
         this.reportMapper = reportMapper;
         this.serialNumberMapper = serialNumberMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
+        this.serialNumberService = serialNumberService;
     }
 
     @Override
@@ -263,6 +269,7 @@ public class ProductionServiceImpl implements ProductionService {
     public ProductionBatchVO startBatch(UUID id) {
         ProductionBatch batch = getBatch(id);
         ProductionBatchStatusMachine.ensureCanStart(batch.getStatus());
+        ensureBomMaterialsAvailable(batch);
         if (!ProductionBatchStatusMachine.IN_PROGRESS.equals(batch.getStatus())) {
             batch.setStatus(ProductionBatchStatusMachine.IN_PROGRESS);
             if (batch.getStartedAt() == null) {
@@ -273,6 +280,24 @@ public class ProductionServiceImpl implements ProductionService {
         batch.setUpdatedAt(OffsetDateTime.now());
         batchMapper.updateById(batch);
         return toBatchVO(batch);
+    }
+
+    private void ensureBomMaterialsAvailable(ProductionBatch batch) {
+        if (batch.getBomId() == null) {
+            return;
+        }
+        List<ProductionBomItem> items = bomItemMapper.selectByBomId(batch.getBomId());
+        if (items == null || items.isEmpty()) {
+            throw new BizException(10004, "生产 BOM 未配置原料，不能投产");
+        }
+        for (ProductionBomItem item : items) {
+            Material material = ensureMaterialExists(item.getMaterialId());
+            BigDecimal requiredQuantity = safe(item.getQuantity()).multiply(safe(batch.getPlannedQuantity()));
+            BigDecimal availableQuantity = safe(material.getCurrentStock());
+            if (availableQuantity.compareTo(requiredQuantity) < 0) {
+                throw new BizException(10004, "原料库存不足，不能投产：" + material.getCode() + "，需 " + requiredQuantity + "，可用 " + availableQuantity);
+            }
+        }
     }
 
     @Override
@@ -317,6 +342,7 @@ public class ProductionServiceImpl implements ProductionService {
         batch.setUpdatedAt(now);
         batchMapper.updateById(batch);
         createProductionInTransaction(batch, stock, receiptQuantity, now);
+        serialNumberService.markBatchStocked(batch.getId(), receiptQuantity, now);
         return toBatchVO(batch);
     }
 
@@ -354,14 +380,30 @@ public class ProductionServiceImpl implements ProductionService {
     public PageVO<ProductionReportVO> listReports(long pageNum, long pageSize, String batchNo, UUID productId, String status) {
         Page<ProductionReport> page = reportMapper.selectPage(
                 new Page<>(pageNum, pageSize),
-                new LambdaQueryWrapper<ProductionReport>()
-                        .like(hasText(batchNo), ProductionReport::getBatchNo, batchNo)
-                        .eq(productId != null, ProductionReport::getProductId, productId)
-                        .eq(hasText(status), ProductionReport::getStatus, status)
-                        .orderByDesc(ProductionReport::getReportAt)
-                        .orderByDesc(ProductionReport::getCreatedAt));
+                reportWrapper(batchNo, productId, status));
         List<ProductionReportVO> records = page.getRecords().stream().map(this::toReportVO).collect(Collectors.toList());
         return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    @Override
+    public ByteArrayInputStream exportReports(String batchNo, UUID productId, String status) {
+        List<ProductionReportVO> records = reportMapper.selectList(reportWrapper(batchNo, productId, status))
+                .stream()
+                .map(this::toReportVO)
+                .collect(Collectors.toList());
+        return ExcelExportUtils.export("production-reports", List.of(
+                ExcelExportUtils.column("报工单号", ProductionReportVO::getReportNo),
+                ExcelExportUtils.column("生产批次", ProductionReportVO::getBatchNo),
+                ExcelExportUtils.column("产品编码", ProductionReportVO::getProductCode),
+                ExcelExportUtils.column("产品名称", ProductionReportVO::getProductName),
+                ExcelExportUtils.column("报工数量", ProductionReportVO::getReportQuantity),
+                ExcelExportUtils.column("良品数量", ProductionReportVO::getGoodQuantity),
+                ExcelExportUtils.column("不良数量", ProductionReportVO::getDefectQuantity),
+                ExcelExportUtils.column("报工时间", ProductionReportVO::getReportAt),
+                ExcelExportUtils.column("操作人", ProductionReportVO::getOperatorName),
+                ExcelExportUtils.column("状态", ProductionReportVO::getStatus),
+                ExcelExportUtils.column("备注", ProductionReportVO::getRemark)
+        ), records, "生产报工导出失败");
     }
 
     @Override
@@ -378,6 +420,9 @@ public class ProductionServiceImpl implements ProductionService {
         }
         if (goodQuantity.add(defectQuantity).compareTo(reportQuantity) != 0) {
             throw new BizException(10004, "Good quantity plus defect quantity must equal report quantity");
+        }
+        if (safe(batch.getCompletedQuantity()).add(goodQuantity).compareTo(safe(batch.getPlannedQuantity())) > 0) {
+            throw new BizException(10004, "累计良品数量不能超过计划数量");
         }
 
         Product product = ensureProductExists(batch.getProductId());
@@ -450,7 +495,15 @@ public class ProductionServiceImpl implements ProductionService {
         if (quantity == null) {
             quantity = BigDecimal.valueOf(productPackage.getQuantity() == null ? 1 : productPackage.getQuantity());
         }
-        String boxCode = "BOX-" + batch.getBatchNo() + "-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BizException(10004, "装箱数量必须大于0");
+        }
+        BigDecimal packedQuantity = sumPackedQuantity(batch.getId());
+        if (packedQuantity.add(quantity).compareTo(safe(batch.getCompletedQuantity())) > 0) {
+            throw new BizException(10004, "累计装箱数量不能超过已完成良品数量");
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        String boxCode = "BOX-" + batch.getBatchNo() + "-" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         ProductionBox box = new ProductionBox();
         box.setId(UUID.randomUUID());
         box.setBoxCode(boxCode);
@@ -468,9 +521,10 @@ public class ProductionServiceImpl implements ProductionService {
         box.setStatus("PACKED");
         box.setRemark(request.getRemark());
         box.setCreatedBy(SecurityUtils.getUserId());
-        box.setCreatedAt(OffsetDateTime.now());
+        box.setCreatedAt(now);
         box.setUpdatedBy(SecurityUtils.getUserId());
-        box.setUpdatedAt(OffsetDateTime.now());
+        box.setUpdatedAt(now);
+        serialNumberService.markPacked(batch.getId(), product.getId(), request.getSerialNos(), now);
         boxMapper.insert(box);
         return toBoxVO(box);
     }
@@ -811,6 +865,15 @@ public class ProductionServiceImpl implements ProductionService {
         return vo;
     }
 
+    private LambdaQueryWrapper<ProductionReport> reportWrapper(String batchNo, UUID productId, String status) {
+        return new LambdaQueryWrapper<ProductionReport>()
+                .like(hasText(batchNo), ProductionReport::getBatchNo, batchNo)
+                .eq(productId != null, ProductionReport::getProductId, productId)
+                .eq(hasText(status), ProductionReport::getStatus, status)
+                .orderByDesc(ProductionReport::getReportAt)
+                .orderByDesc(ProductionReport::getCreatedAt);
+    }
+
     private ProductionBoxVO toBoxVO(ProductionBox box) {
         ProductionBoxVO vo = new ProductionBoxVO();
         vo.setId(box.getId());
@@ -905,6 +968,16 @@ public class ProductionServiceImpl implements ProductionService {
 
     private BigDecimal safe(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private BigDecimal sumPackedQuantity(UUID batchId) {
+        List<ProductionBox> boxes = boxMapper.selectList(new LambdaQueryWrapper<ProductionBox>()
+                .eq(ProductionBox::getBatchId, batchId)
+                .ne(ProductionBox::getStatus, "CANCELLED"));
+        return boxes.stream()
+                .map(ProductionBox::getQuantity)
+                .map(this::safe)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private boolean hasText(String value) {

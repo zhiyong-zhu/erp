@@ -6,6 +6,7 @@ import com.erp.common.core.exception.BizException;
 import com.erp.production.domain.dto.ProductionBatchRequest;
 import com.erp.production.domain.dto.ProductionBoxRequest;
 import com.erp.production.domain.dto.ProductionBomRequest;
+import com.erp.production.domain.dto.ProductionMaterialMovementRequest;
 import com.erp.production.domain.dto.ProductionProcessRequest;
 import com.erp.production.domain.dto.ProductionReportRequest;
 import com.erp.production.domain.dto.SerialNumberGenerateRequest;
@@ -13,14 +14,21 @@ import com.erp.production.domain.dto.SerialNumberRequest;
 import com.erp.production.domain.vo.ProductionBatchVO;
 import com.erp.production.domain.vo.ProductionBoxVO;
 import com.erp.production.domain.vo.ProductionBomVO;
+import com.erp.production.domain.vo.ProductionMaterialMovementVO;
 import com.erp.production.domain.vo.ProductionProductStockVO;
 import com.erp.production.domain.vo.ProductionProcessVO;
 import com.erp.production.domain.vo.ProductionReportVO;
 import com.erp.production.domain.vo.SerialNumberVO;
+import com.erp.production.service.ProductionMaterialMovementService;
 import com.erp.production.service.ProductionService;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,9 +43,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/production")
 public class ProductionController {
     private final ProductionService productionService;
+    private final ProductionMaterialMovementService materialMovementService;
 
-    public ProductionController(ProductionService productionService) {
+    public ProductionController(ProductionService productionService, ProductionMaterialMovementService materialMovementService) {
         this.productionService = productionService;
+        this.materialMovementService = materialMovementService;
     }
 
     @GetMapping("/processes")
@@ -134,10 +144,43 @@ public class ProductionController {
         return R.ok(productionService.listReports(pageNum, pageSize, batchNo, parseUuid(productId), status));
     }
 
+    @GetMapping("/reports/export")
+    @PreAuthorize("hasAuthority(T(com.erp.production.permission.ProductionPermissionCodes).REPORT_LIST)")
+    public ResponseEntity<InputStreamResource> exportReports(@RequestParam(required = false) String batchNo,
+                                                              @RequestParam(required = false) String productId,
+                                                              @RequestParam(required = false) String status) throws IOException {
+        InputStreamResource resource = new InputStreamResource(productionService.exportReports(batchNo, parseUuid(productId), status));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=production-reports.xlsx")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
     @PostMapping("/reports")
     @PreAuthorize("hasAuthority(T(com.erp.production.permission.ProductionPermissionCodes).REPORT_CREATE)")
     public R<ProductionReportVO> createReport(@Valid @RequestBody ProductionReportRequest request) {
         return R.ok(productionService.createReport(request));
+    }
+
+    @GetMapping("/material-movements")
+    @PreAuthorize("hasAuthority(T(com.erp.production.permission.ProductionPermissionCodes).REPORT_LIST)")
+    public R<PageVO<ProductionMaterialMovementVO>> listMaterialMovements(@RequestParam(defaultValue = "1") long pageNum,
+                                                                          @RequestParam(defaultValue = "10") long pageSize,
+                                                                          @RequestParam(required = false) String batchId,
+                                                                          @RequestParam(required = false) String movementType) {
+        return R.ok(materialMovementService.listMovements(pageNum, pageSize, parseUuid(batchId), movementType));
+    }
+
+    @PostMapping("/material-movements/pick")
+    @PreAuthorize("hasAuthority(T(com.erp.production.permission.ProductionPermissionCodes).REPORT_CREATE)")
+    public R<ProductionMaterialMovementVO> pickMaterials(@Valid @RequestBody ProductionMaterialMovementRequest request) {
+        return R.ok(materialMovementService.pickMaterials(request));
+    }
+
+    @PostMapping("/material-movements/return")
+    @PreAuthorize("hasAuthority(T(com.erp.production.permission.ProductionPermissionCodes).REPORT_CREATE)")
+    public R<ProductionMaterialMovementVO> returnMaterials(@Valid @RequestBody ProductionMaterialMovementRequest request) {
+        return R.ok(materialMovementService.returnMaterials(request));
     }
 
     @GetMapping("/boxes")

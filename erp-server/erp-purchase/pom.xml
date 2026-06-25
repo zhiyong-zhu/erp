@@ -17,5 +17,6 @@
         <dependency><groupId>com.erp</groupId><artifactId>erp-common-workflow</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>com.erp</groupId><artifactId>erp-material</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>com.erp</groupId><artifactId>erp-inventory</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     </dependencies>
 </project>

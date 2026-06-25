@@ -1,5 +1,5 @@
 import { ModalForm, ProFormDigit, ProFormSelect } from "@ant-design/pro-components";
-import { App, Button, Card, Descriptions, Empty, Table, Tag, Typography } from "antd";
+import { App, Button, Card, Descriptions, Empty, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { fetchLabelTemplates, fetchProductPackages, previewLabelPrint } from "../../../api/product";
@@ -97,6 +97,12 @@ export function ProductLabelPrintTab({ product, height, canPrint }: {
             <Text>预览地址：<code>{result.pdfUrl}</code></Text>
             <br />
             <Text type="secondary">摘要：{result.summary}</Text>
+            <div style={{ marginTop: 12 }}>
+              <Space>
+                <Button onClick={() => printPreview(result)}>打印预览</Button>
+                <Button disabled={!result.pdfUrl} onClick={() => openPreview(result.pdfUrl)}>打开 PDF/HTML</Button>
+              </Space>
+            </div>
             {result.previewHtml ? (
               <div
                 style={{ marginTop: 16, padding: 12, borderRadius: 12, background: "#f8fafc" }}
@@ -122,6 +128,18 @@ export function ProductLabelPrintTab({ product, height, canPrint }: {
       </ModalForm>
     </div>
   );
+}
+
+function printPreview(result: LabelPrintResult) {
+  const popup = window.open("", "_blank", "width=480,height=640");
+  if (!popup) return;
+  popup.document.write(`<html><head><title>标签打印</title></head><body>${result.previewHtml ?? ""}<script>window.print()</script></body></html>`);
+  popup.document.close();
+}
+
+function openPreview(url?: string | null) {
+  if (!url) return;
+  window.open(url, "_blank");
 }
 
 function levelLabel(level: number) {

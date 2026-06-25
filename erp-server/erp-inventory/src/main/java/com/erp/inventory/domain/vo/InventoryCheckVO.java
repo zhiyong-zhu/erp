@@ -12,6 +12,12 @@ public class InventoryCheckVO {
     private BigDecimal totalDifference;
     private String remark;
     private OffsetDateTime createdAt;
+    private OffsetDateTime reviewedAt;
+    private String reviewRemark;
+    private OffsetDateTime approvedAt;
+    private String approvalRemark;
+    private OffsetDateTime rejectedAt;
+    private String rejectRemark;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -27,4 +33,16 @@ public class InventoryCheckVO {
     public void setRemark(String remark) { this.remark = remark; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(OffsetDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
+    public String getReviewRemark() { return reviewRemark; }
+    public void setReviewRemark(String reviewRemark) { this.reviewRemark = reviewRemark; }
+    public OffsetDateTime getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(OffsetDateTime approvedAt) { this.approvedAt = approvedAt; }
+    public String getApprovalRemark() { return approvalRemark; }
+    public void setApprovalRemark(String approvalRemark) { this.approvalRemark = approvalRemark; }
+    public OffsetDateTime getRejectedAt() { return rejectedAt; }
+    public void setRejectedAt(OffsetDateTime rejectedAt) { this.rejectedAt = rejectedAt; }
+    public String getRejectRemark() { return rejectRemark; }
+    public void setRejectRemark(String rejectRemark) { this.rejectRemark = rejectRemark; }
 }

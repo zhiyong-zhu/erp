@@ -15,6 +15,7 @@ import com.erp.production.domain.vo.ProductionProductStockVO;
 import com.erp.production.domain.vo.ProductionProcessVO;
 import com.erp.production.domain.vo.ProductionReportVO;
 import com.erp.production.domain.vo.SerialNumberVO;
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ public interface ProductionService {
     ProductionBatchVO receiveBatch(UUID id);
     List<SerialNumberVO> generateSerialNumbers(UUID batchId, SerialNumberGenerateRequest request);
     PageVO<ProductionReportVO> listReports(long pageNum, long pageSize, String batchNo, UUID productId, String status);
+    ByteArrayInputStream exportReports(String batchNo, UUID productId, String status);
     ProductionReportVO createReport(ProductionReportRequest request);
     PageVO<ProductionBoxVO> listBoxes(long pageNum, long pageSize, String batchNo, UUID productId, String status);
     ProductionBoxVO packBox(ProductionBoxRequest request);

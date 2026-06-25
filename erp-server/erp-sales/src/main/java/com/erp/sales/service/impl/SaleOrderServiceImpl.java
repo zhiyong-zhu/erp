@@ -4,13 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
+import com.erp.common.report.excel.ExcelExportUtils;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.inventory.domain.entity.InventoryTransaction;
-import com.erp.inventory.mapper.InventoryTransactionMapper;
-import com.erp.material.domain.entity.Material;
-import com.erp.material.mapper.MaterialMapper;
+import com.erp.product.domain.entity.ProductSku;
+import com.erp.product.mapper.ProductSkuMapper;
 import com.erp.production.domain.entity.ProductionProductStock;
+import com.erp.inventory.mapper.InventoryTransactionMapper;
 import com.erp.production.mapper.ProductionProductStockMapper;
+import com.erp.production.service.ProductionSerialNumberService;
 import com.erp.sales.domain.SaleOrderStatusMachine;
 import com.erp.sales.domain.dto.SaleOrderCreateRequest;
 import com.erp.sales.domain.dto.SaleOrderStatusRequest;
@@ -20,22 +22,29 @@ import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
 import com.erp.sales.domain.entity.SaleReturn;
 import com.erp.sales.domain.entity.ShippingOrder;
+import com.erp.sales.domain.entity.ShippingOrderItem;
 import com.erp.sales.domain.vo.SaleOrderItemVO;
 import com.erp.sales.domain.vo.SaleOrderVO;
 import com.erp.sales.domain.vo.SaleReceivableStatVO;
+import com.erp.sales.domain.vo.ShippingItemVO;
 import com.erp.sales.domain.vo.ShippingVO;
 import com.erp.sales.mapper.CustomerMapper;
 import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
+import com.erp.sales.mapper.ShippingOrderItemMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
 import com.erp.sales.service.SaleExceptionService;
 import com.erp.sales.service.SaleOrderService;
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -46,37 +55,46 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SaleOrderServiceImpl implements SaleOrderService {
     private static final Logger log = LoggerFactory.getLogger(SaleOrderServiceImpl.class);
+    private static final String SHIPPING_PENDING_REVIEW = "PENDING_REVIEW";
+    private static final String SHIPPING_SHIPPED = "SHIPPED";
+    private static final String SHIPPING_CANCELLED = "CANCELLED";
 
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
     private final ShippingOrderMapper shippingOrderMapper;
+    private final ShippingOrderItemMapper shippingOrderItemMapper;
     private final SaleReturnMapper saleReturnMapper;
     private final CustomerMapper customerMapper;
-    private final MaterialMapper materialMapper;
+    private final ProductSkuMapper productSkuMapper;
     private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
     private final SaleExceptionService saleExceptionService;
+    private final ProductionSerialNumberService serialNumberService;
 
     public SaleOrderServiceImpl(
             SaleOrderMapper saleOrderMapper,
             SaleOrderItemMapper saleOrderItemMapper,
             ShippingOrderMapper shippingOrderMapper,
+            ShippingOrderItemMapper shippingOrderItemMapper,
             SaleReturnMapper saleReturnMapper,
             CustomerMapper customerMapper,
-            MaterialMapper materialMapper,
+            ProductSkuMapper productSkuMapper,
             ProductionProductStockMapper productStockMapper,
             InventoryTransactionMapper inventoryTransactionMapper,
-            SaleExceptionService saleExceptionService
+            SaleExceptionService saleExceptionService,
+            ProductionSerialNumberService serialNumberService
     ) {
         this.saleOrderMapper = saleOrderMapper;
         this.saleOrderItemMapper = saleOrderItemMapper;
         this.shippingOrderMapper = shippingOrderMapper;
+        this.shippingOrderItemMapper = shippingOrderItemMapper;
         this.saleReturnMapper = saleReturnMapper;
         this.customerMapper = customerMapper;
-        this.materialMapper = materialMapper;
+        this.productSkuMapper = productSkuMapper;
         this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
         this.saleExceptionService = saleExceptionService;
+        this.serialNumberService = serialNumberService;
     }
 
     @Override
@@ -123,6 +141,9 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         order.setCreatedAt(OffsetDateTime.now());
         order.setUpdatedBy(SecurityUtils.getUserId());
         order.setUpdatedAt(OffsetDateTime.now());
+        order.setTotalAmount(BigDecimal.ZERO);
+        order.setPayableAmount(safe(order.getFreightAmount()).subtract(safe(order.getDiscountAmount())));
+        saleOrderMapper.insert(order);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (SaleOrderCreateRequest.Item itemReq : request.getItems()) {
@@ -153,7 +174,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         order.setPayableAmount(totalAmount
                 .subtract(safe(order.getDiscountAmount()))
                 .add(safe(order.getFreightAmount())));
-        saleOrderMapper.insert(order);
+        saleOrderMapper.updateById(order);
         return toVO(order);
     }
 
@@ -224,6 +245,14 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         SaleOrder order = getOrder(id);
         String action = request.getAction();
         String nextStatus = SaleOrderStatusMachine.next(order.getStatus(), action);
+        List<SaleOrderItem> items = getOrderItems(order.getId());
+        if (SaleOrderStatusMachine.ACTION_CONFIRM.equals(action)) {
+            reserveOrderStock(order, items);
+        }
+        if (SaleOrderStatusMachine.ACTION_CANCEL.equals(action)) {
+            cancelPendingShippingOrders(order);
+            releaseOrderReservation(order, items);
+        }
         order.setStatus(nextStatus);
         if (SaleOrderStatusMachine.COMPLETED.equals(nextStatus)) {
             order.setCompletedAt(OffsetDateTime.now());
@@ -242,42 +271,49 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     public SaleOrderVO ship(UUID id, ShippingOrderRequest request) {
         SaleOrder order = getOrder(id);
         SaleOrderStatusMachine.ensureCanShip(order.getStatus());
+        ShippingOrderRequest actualRequest = request == null ? new ShippingOrderRequest() : request;
+        List<SaleOrderItem> items = getOrderItems(order.getId());
+        if (SaleOrderStatusMachine.CONFIRMED.equals(order.getStatus())) {
+            reserveOrderStock(order, items);
+            order.setStatus(SaleOrderStatusMachine.PENDING_SHIP);
+        }
+        Map<UUID, BigDecimal> pendingQuantities = pendingShippingQuantities(order.getId());
+        List<ShippingLine> shippingLines = resolveShippingLines(actualRequest, items, pendingQuantities);
 
-        // Create shipping order
+        OffsetDateTime now = OffsetDateTime.now();
         ShippingOrder shipping = new ShippingOrder();
         shipping.setId(UUID.randomUUID());
         shipping.setSaleOrderId(order.getId());
-        shipping.setCarrierCode(request.getCarrierCode());
-        shipping.setCarrierName(request.getCarrierName());
-        shipping.setTrackingNumber(request.getTrackingNumber());
-        shipping.setStatus(SaleOrderStatusMachine.SHIPPED);
-        shipping.setShippedAt(OffsetDateTime.now());
-        shipping.setRemark(request.getRemark());
+        shipping.setCarrierCode(actualRequest.getCarrierCode());
+        shipping.setCarrierName(actualRequest.getCarrierName());
+        shipping.setTrackingNumber(actualRequest.getTrackingNumber());
+        shipping.setStatus(SHIPPING_PENDING_REVIEW);
+        shipping.setRemark(actualRequest.getRemark());
         shipping.setCreatedBy(SecurityUtils.getUserId());
-        shipping.setCreatedAt(OffsetDateTime.now());
+        shipping.setCreatedAt(now);
         shipping.setUpdatedBy(SecurityUtils.getUserId());
-        shipping.setUpdatedAt(OffsetDateTime.now());
+        shipping.setUpdatedAt(now);
         shippingOrderMapper.insert(shipping);
 
-        // Update order items shipped quantity
-        List<SaleOrderItem> items = saleOrderItemMapper.selectBySaleOrderId(order.getId());
-        for (SaleOrderItem item : items) {
-            item.setShippedQuantity(item.getQuantity());
-            saleOrderItemMapper.updateById(item);
-
-            // Inventory outbound: create SALE_OUT transaction
-            try {
-                createOutboundTransaction(order, item);
-            } catch (BizException ex) {
-                saleExceptionService.createOrderException(order, item, "SHIPMENT", ex.getMessage());
-                throw ex;
-            }
+        for (ShippingLine line : shippingLines) {
+            ShippingOrderItem shippingItem = new ShippingOrderItem();
+            shippingItem.setId(UUID.randomUUID());
+            shippingItem.setShippingOrderId(shipping.getId());
+            shippingItem.setSaleOrderItemId(line.item().getId());
+            shippingItem.setSkuId(line.item().getSkuId());
+            shippingItem.setSkuCode(line.item().getSkuCode());
+            shippingItem.setProductName(line.item().getProductName());
+            shippingItem.setQuantity(line.quantity());
+            shippingItem.setSerialNos(joinSerialNos(line.serialNos()));
+            shippingItem.setCreatedAt(now);
+            shippingOrderItemMapper.insert(shippingItem);
         }
 
-        order.setStatus(SaleOrderStatusMachine.SHIPPED);
-        order.setShippedAt(OffsetDateTime.now());
+        if (!SaleOrderStatusMachine.PARTIAL_SHIPPED.equals(order.getStatus())) {
+            order.setStatus(SaleOrderStatusMachine.PENDING_SHIP);
+        }
         order.setUpdatedBy(SecurityUtils.getUserId());
-        order.setUpdatedAt(OffsetDateTime.now());
+        order.setUpdatedAt(now);
         saleOrderMapper.updateById(order);
         return toVO(order);
     }
@@ -293,11 +329,85 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     }
 
     @Override
+    public ByteArrayInputStream exportShipping() {
+        List<ShippingVO> records = shippingOrderMapper.selectList(new LambdaQueryWrapper<ShippingOrder>().orderByDesc(ShippingOrder::getCreatedAt))
+                .stream()
+                .map(this::toShippingVO)
+                .collect(Collectors.toList());
+        return ExcelExportUtils.export("shipping-orders", List.of(
+                ExcelExportUtils.column("销售订单ID", ShippingVO::getSaleOrderId),
+                ExcelExportUtils.column("承运商编码", ShippingVO::getCarrierCode),
+                ExcelExportUtils.column("承运商", ShippingVO::getCarrierName),
+                ExcelExportUtils.column("运单号", ShippingVO::getTrackingNumber),
+                ExcelExportUtils.column("状态", ShippingVO::getStatus),
+                ExcelExportUtils.column("发货数量", this::shippingQuantity),
+                ExcelExportUtils.column("发货时间", ShippingVO::getShippedAt),
+                ExcelExportUtils.column("签收时间", ShippingVO::getReceivedAt),
+                ExcelExportUtils.column("备注", ShippingVO::getRemark),
+                ExcelExportUtils.column("创建时间", ShippingVO::getCreatedAt),
+                ExcelExportUtils.column("更新时间", ShippingVO::getUpdatedAt)
+        ), records, "发货单导出失败");
+    }
+
+    @Override
     public ShippingVO shippingDetail(UUID id) {
         ShippingOrder shipping = shippingOrderMapper.selectById(id);
         if (shipping == null) {
             throw new BizException(10006, "发货单不存在");
         }
+        return toShippingVO(shipping);
+    }
+
+    @Override
+    @Transactional
+    public ShippingVO reviewShipping(UUID id) {
+        ShippingOrder shipping = shippingOrderMapper.selectById(id);
+        if (shipping == null) {
+            throw new BizException(10006, "发货单不存在");
+        }
+        if (!SHIPPING_PENDING_REVIEW.equals(shipping.getStatus())) {
+            throw new BizException(10004, "只有待复核发货单允许复核出库");
+        }
+
+        SaleOrder order = getOrder(shipping.getSaleOrderId());
+        List<ShippingOrderItem> shippingItems = shippingOrderItemMapper.selectByShippingOrderId(shipping.getId());
+        if (shippingItems == null || shippingItems.isEmpty()) {
+            throw new BizException(10004, "发货单没有可复核明细");
+        }
+
+        for (ShippingOrderItem shippingItem : shippingItems) {
+            SaleOrderItem item = saleOrderItemMapper.selectById(shippingItem.getSaleOrderItemId());
+            if (item == null) {
+                throw new BizException(10006, "销售订单明细不存在: " + shippingItem.getSaleOrderItemId());
+            }
+            try {
+                UUID productId = createOutboundTransaction(order, item, shippingItem.getQuantity());
+                serialNumberService.markShipped(productId, splitSerialNos(shippingItem.getSerialNos()), OffsetDateTime.now());
+            } catch (BizException ex) {
+                saleExceptionService.createOrderException(order, item, "SHIPMENT_REVIEW", ex.getMessage());
+                throw ex;
+            }
+            item.setShippedQuantity(safe(item.getShippedQuantity()).add(shippingItem.getQuantity()));
+            saleOrderItemMapper.updateById(item);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        shipping.setStatus(SHIPPING_SHIPPED);
+        shipping.setShippedAt(now);
+        shipping.setUpdatedBy(SecurityUtils.getUserId());
+        shipping.setUpdatedAt(now);
+        shippingOrderMapper.updateById(shipping);
+
+        List<SaleOrderItem> orderItems = getOrderItems(order.getId());
+        boolean allShipped = orderItems.stream()
+                .allMatch(item -> safe(item.getShippedQuantity()).compareTo(safe(item.getQuantity())) >= 0);
+        order.setStatus(allShipped ? SaleOrderStatusMachine.SHIPPED : SaleOrderStatusMachine.PARTIAL_SHIPPED);
+        if (allShipped) {
+            order.setShippedAt(now);
+        }
+        order.setUpdatedBy(SecurityUtils.getUserId());
+        order.setUpdatedAt(now);
+        saleOrderMapper.updateById(order);
         return toShippingVO(shipping);
     }
 
@@ -353,8 +463,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
 
     // ========== Inventory outbound integration ==========
 
-    private void createOutboundTransaction(SaleOrder order, SaleOrderItem item) {
-        BigDecimal quantity = safe(item.getQuantity());
+    private UUID createOutboundTransaction(SaleOrder order, SaleOrderItem item, BigDecimal quantity) {
         if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BizException(10004, "发货数量必须大于0");
         }
@@ -373,64 +482,258 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         ProductionProductStock productStock = findProductStock(item);
         if (productStock != null) {
             BigDecimal currentStock = safe(productStock.getCurrentStock());
+            BigDecimal reservedStock = safe(productStock.getReservedStock());
             if (currentStock.compareTo(quantity) < 0) {
                 throw new BizException(10004, "成品库存不足: " + productStock.getProductName());
             }
+            if (reservedStock.compareTo(quantity) < 0) {
+                throw new BizException(10004, "成品占用库存不足: " + productStock.getProductName());
+            }
+            OffsetDateTime now = OffsetDateTime.now();
             BigDecimal newStock = currentStock.subtract(quantity);
+            BigDecimal newReservedStock = reservedStock.subtract(quantity);
+            int updatedRows = productStockMapper.decreaseReservedIfEnough(productStock.getId(), quantity, SecurityUtils.getUserId(), now);
+            if (updatedRows == 0) {
+                throw new BizException(10004, "成品库存不足或已被其他发货作业占用: " + productStock.getProductName());
+            }
             productStock.setCurrentStock(newStock);
+            productStock.setReservedStock(newReservedStock);
             productStock.setUpdatedBy(SecurityUtils.getUserId());
-            productStock.setUpdatedAt(OffsetDateTime.now());
-            productStockMapper.updateById(productStock);
+            productStock.setUpdatedAt(now);
             txn.setMaterialId(productStock.getProductId());
             txn.setMaterialCode(productStock.getProductCode());
             txn.setMaterialName(productStock.getProductName());
+            txn.setBalanceBefore(currentStock);
             txn.setBalanceAfter(newStock);
             inventoryTransactionMapper.insert(txn);
-            return;
+            return productStock.getProductId();
         }
 
-        Material material = findMaterialFallback(item);
-        if (material == null) {
-            throw new BizException(10004, "未找到可扣减库存的成品或原料: " + item.getSkuCode());
+        throw new BizException(10004, "未找到可扣减库存的成品库存: " + item.getSkuCode());
+    }
+
+    private void reserveOrderStock(SaleOrder order, List<SaleOrderItem> items) {
+        if (items.isEmpty()) {
+            throw new BizException(10004, "销售订单没有可预占明细");
         }
-        BigDecimal currentStock = safe(material.getCurrentStock());
-        if (currentStock.compareTo(quantity) < 0) {
-            throw new BizException(10004, "原料库存不足: " + material.getName());
+        Map<UUID, BigDecimal> pendingQuantities = pendingShippingQuantities(order.getId());
+        for (SaleOrderItem item : items) {
+            BigDecimal quantity = remainingQuantity(item).subtract(pendingQuantities.getOrDefault(item.getId(), BigDecimal.ZERO));
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            try {
+                reserveProductStock(item, quantity);
+            } catch (BizException ex) {
+                saleExceptionService.createOrderException(order, item, "STOCK_RESERVE", ex.getMessage());
+                throw ex;
+            }
         }
-        BigDecimal newStock = currentStock.subtract(quantity);
-        material.setCurrentStock(newStock);
-        material.setUpdatedBy(SecurityUtils.getUserId());
-        material.setUpdatedAt(OffsetDateTime.now());
-        materialMapper.updateById(material);
-        txn.setMaterialId(material.getId());
-        txn.setMaterialCode(material.getCode());
-        txn.setMaterialName(material.getName());
-        txn.setBalanceAfter(newStock);
-        inventoryTransactionMapper.insert(txn);
+    }
+
+    private void reserveProductStock(SaleOrderItem item, BigDecimal quantity) {
+        ProductionProductStock productStock = findProductStock(item);
+        if (productStock == null) {
+            throw new BizException(10004, "未找到可预占库存的成品库存: " + item.getSkuCode());
+        }
+        BigDecimal currentStock = safe(productStock.getCurrentStock());
+        BigDecimal reservedStock = safe(productStock.getReservedStock());
+        BigDecimal availableStock = currentStock.subtract(reservedStock);
+        if (availableStock.compareTo(quantity) < 0) {
+            throw new BizException(10004, "成品可用库存不足: " + productStock.getProductName());
+        }
+        productStock.setReservedStock(reservedStock.add(quantity));
+        productStock.setUpdatedBy(SecurityUtils.getUserId());
+        productStock.setUpdatedAt(OffsetDateTime.now());
+        productStockMapper.updateById(productStock);
+    }
+
+    private void releaseOrderReservation(SaleOrder order, List<SaleOrderItem> items) {
+        for (SaleOrderItem item : items) {
+            BigDecimal quantity = remainingQuantity(item);
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            releaseProductStock(item, quantity);
+        }
+    }
+
+    private void releaseProductStock(SaleOrderItem item, BigDecimal quantity) {
+        ProductionProductStock productStock = findProductStock(item);
+        if (productStock == null) {
+            return;
+        }
+        BigDecimal reservedStock = safe(productStock.getReservedStock());
+        BigDecimal releaseQuantity = reservedStock.min(quantity);
+        if (releaseQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        productStock.setReservedStock(reservedStock.subtract(releaseQuantity));
+        productStock.setUpdatedBy(SecurityUtils.getUserId());
+        productStock.setUpdatedAt(OffsetDateTime.now());
+        productStockMapper.updateById(productStock);
+    }
+
+    private void cancelPendingShippingOrders(SaleOrder order) {
+        List<ShippingOrder> shippings = shippingOrderMapper.selectBySaleOrderId(order.getId());
+        if (shippings == null || shippings.isEmpty()) {
+            return;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        for (ShippingOrder shipping : shippings) {
+            if (SHIPPING_PENDING_REVIEW.equals(shipping.getStatus())) {
+                shipping.setStatus(SHIPPING_CANCELLED);
+                shipping.setUpdatedBy(SecurityUtils.getUserId());
+                shipping.setUpdatedAt(now);
+                shippingOrderMapper.updateById(shipping);
+            }
+        }
+    }
+
+    private Map<UUID, BigDecimal> pendingShippingQuantities(UUID saleOrderId) {
+        List<ShippingOrder> shippings = shippingOrderMapper.selectBySaleOrderId(saleOrderId);
+        if (shippings == null || shippings.isEmpty()) {
+            return Map.of();
+        }
+        return shippings.stream()
+                .filter(shipping -> SHIPPING_PENDING_REVIEW.equals(shipping.getStatus()))
+                .flatMap(shipping -> {
+                    List<ShippingOrderItem> shippingItems = shippingOrderItemMapper.selectByShippingOrderId(shipping.getId());
+                    return shippingItems == null ? List.<ShippingOrderItem>of().stream() : shippingItems.stream();
+                })
+                .collect(Collectors.groupingBy(
+                        ShippingOrderItem::getSaleOrderItemId,
+                        Collectors.mapping(ShippingOrderItem::getQuantity, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+    }
+
+    private List<ShippingLine> resolveShippingLines(ShippingOrderRequest request, List<SaleOrderItem> items, Map<UUID, BigDecimal> pendingQuantities) {
+        if (items.isEmpty()) {
+            throw new BizException(10004, "销售订单没有可发货明细");
+        }
+
+        List<ShippingLine> lines = new ArrayList<>();
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            for (SaleOrderItem item : items) {
+                BigDecimal remaining = remainingQuantity(item, pendingQuantities);
+                if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+                    lines.add(new ShippingLine(item, remaining, List.of()));
+                }
+            }
+        } else {
+            Map<UUID, SaleOrderItem> itemMap = items.stream()
+                    .collect(Collectors.toMap(SaleOrderItem::getId, item -> item));
+            Set<UUID> requestedItemIds = new HashSet<>();
+            for (ShippingOrderRequest.Item requestItem : request.getItems()) {
+                if (requestItem.getSaleOrderItemId() == null) {
+                    throw new BizException(10004, "发货明细必须指定销售订单明细");
+                }
+                if (!requestedItemIds.add(requestItem.getSaleOrderItemId())) {
+                    throw new BizException(10004, "发货明细重复: " + requestItem.getSaleOrderItemId());
+                }
+                SaleOrderItem item = itemMap.get(requestItem.getSaleOrderItemId());
+                if (item == null) {
+                    throw new BizException(10004, "销售订单明细不存在: " + requestItem.getSaleOrderItemId());
+                }
+                BigDecimal quantity = safe(requestItem.getQuantity());
+                if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new BizException(10004, "发货数量必须大于0");
+                }
+                BigDecimal remaining = remainingQuantity(item, pendingQuantities);
+                if (quantity.compareTo(remaining) > 0) {
+                    throw new BizException(10004, "发货数量不能超过未发数量: " + item.getSkuCode());
+                }
+                List<String> serialNos = normalizeSerialNos(requestItem.getSerialNos());
+                validateSerialQuantity(quantity, serialNos, item.getSkuCode());
+                lines.add(new ShippingLine(item, quantity, serialNos));
+            }
+        }
+
+        if (lines.isEmpty()) {
+            throw new BizException(10004, "销售订单没有剩余可发货数量");
+        }
+        return lines;
+    }
+
+    private BigDecimal remainingQuantity(SaleOrderItem item) {
+        return safe(item.getQuantity()).subtract(safe(item.getShippedQuantity()));
+    }
+
+    private BigDecimal remainingQuantity(SaleOrderItem item, Map<UUID, BigDecimal> pendingQuantities) {
+        return remainingQuantity(item).subtract(pendingQuantities.getOrDefault(item.getId(), BigDecimal.ZERO));
+    }
+
+    private List<SaleOrderItem> getOrderItems(UUID orderId) {
+        List<SaleOrderItem> items = saleOrderItemMapper.selectBySaleOrderId(orderId);
+        return items == null ? List.of() : items;
     }
 
     private ProductionProductStock findProductStock(SaleOrderItem item) {
-        if (item.getSkuId() != null) {
-            ProductionProductStock byProductId = productStockMapper.selectOne(
-                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, item.getSkuId()));
-            if (byProductId != null) {
-                return byProductId;
+        ProductSku sku = findSku(item.getSkuId(), item.getSkuCode());
+        if (sku == null || sku.getProductId() == null) {
+            throw new BizException(10004, "未找到销售明细对应的产品 SKU: " + item.getSkuCode());
+        }
+        return productStockMapper.selectOne(
+                new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, sku.getProductId()));
+    }
+
+    private ProductSku findSku(UUID skuId, String skuCode) {
+        if (skuId != null) {
+            ProductSku byId = productSkuMapper.selectById(skuId);
+            if (byId != null) {
+                return byId;
             }
         }
-        if (item.getSkuCode() != null && !item.getSkuCode().isBlank()) {
-            return productStockMapper.selectOne(
-                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductCode, item.getSkuCode()));
+        if (skuCode != null && !skuCode.isBlank()) {
+            return productSkuMapper.selectBySkuCode(skuCode);
         }
         return null;
     }
 
-    private Material findMaterialFallback(SaleOrderItem item) {
-        if (item.getSkuCode() == null || item.getSkuCode().isBlank()) {
-            return null;
+    private List<String> normalizeSerialNos(List<String> serialNos) {
+        if (serialNos == null || serialNos.isEmpty()) {
+            return List.of();
         }
-        List<Material> candidates = materialMapper.selectList(
-                new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
-        return candidates.isEmpty() ? null : candidates.get(0);
+        List<String> normalized = serialNos.stream()
+                .filter(serialNo -> serialNo != null && !serialNo.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (normalized.size() != serialNos.stream().filter(serialNo -> serialNo != null && !serialNo.isBlank()).count()) {
+            throw new BizException(10004, "发货序列号不能重复");
+        }
+        return normalized;
+    }
+
+    private void validateSerialQuantity(BigDecimal quantity, List<String> serialNos, String skuCode) {
+        if (serialNos.isEmpty()) {
+            return;
+        }
+        try {
+            int expected = quantity.stripTrailingZeros().intValueExact();
+            if (serialNos.size() != expected) {
+                throw new BizException(10004, "发货序列号数量必须等于发货数量: " + skuCode);
+            }
+        } catch (ArithmeticException ex) {
+            throw new BizException(10004, "填写序列号时发货数量必须为整数: " + skuCode);
+        }
+    }
+
+    private String joinSerialNos(List<String> serialNos) {
+        return serialNos == null || serialNos.isEmpty() ? null : String.join(",", serialNos);
+    }
+
+    private List<String> splitSerialNos(String serialNos) {
+        if (serialNos == null || serialNos.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(serialNos.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private record ShippingLine(SaleOrderItem item, BigDecimal quantity, List<String> serialNos) {
     }
 
     // ========== Helpers ==========
@@ -467,8 +770,10 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         vo.setCompletedAt(order.getCompletedAt());
         vo.setCreatedAt(order.getCreatedAt());
         vo.setUpdatedAt(order.getUpdatedAt());
-        vo.setItems(saleOrderItemMapper.selectBySaleOrderId(order.getId()).stream().map(this::toItemVO).toList());
-        vo.setShippingOrders(shippingOrderMapper.selectBySaleOrderId(order.getId()).stream().map(this::toShippingVO).toList());
+        List<SaleOrderItem> items = saleOrderItemMapper.selectBySaleOrderId(order.getId());
+        List<ShippingOrder> shippingOrders = shippingOrderMapper.selectBySaleOrderId(order.getId());
+        vo.setItems((items == null ? List.<SaleOrderItem>of() : items).stream().map(this::toItemVO).toList());
+        vo.setShippingOrders((shippingOrders == null ? List.<ShippingOrder>of() : shippingOrders).stream().map(this::toShippingVO).toList());
         return vo;
     }
 
@@ -499,9 +804,35 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         vo.setShippedAt(shipping.getShippedAt());
         vo.setReceivedAt(shipping.getReceivedAt());
         vo.setRemark(shipping.getRemark());
+        List<ShippingOrderItem> shippingItems = shippingOrderItemMapper.selectByShippingOrderId(shipping.getId());
+        vo.setItems((shippingItems == null ? List.<ShippingOrderItem>of() : shippingItems).stream().map(this::toShippingItemVO).toList());
         vo.setCreatedAt(shipping.getCreatedAt());
         vo.setUpdatedAt(shipping.getUpdatedAt());
         return vo;
+    }
+
+    private ShippingItemVO toShippingItemVO(ShippingOrderItem item) {
+        ShippingItemVO vo = new ShippingItemVO();
+        vo.setId(item.getId());
+        vo.setShippingOrderId(item.getShippingOrderId());
+        vo.setSaleOrderItemId(item.getSaleOrderItemId());
+        vo.setSkuId(item.getSkuId());
+        vo.setSkuCode(item.getSkuCode());
+        vo.setProductName(item.getProductName());
+        vo.setQuantity(item.getQuantity());
+        vo.setSerialNos(splitSerialNos(item.getSerialNos()));
+        vo.setCreatedAt(item.getCreatedAt());
+        return vo;
+    }
+
+    private BigDecimal shippingQuantity(ShippingVO shipping) {
+        if (shipping.getItems() == null || shipping.getItems().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return shipping.getItems().stream()
+                .map(ShippingItemVO::getQuantity)
+                .map(this::safe)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private String generateOrderNo(String prefix) {

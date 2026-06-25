@@ -14,6 +14,7 @@ public class ProductionProductStock extends BaseEntity {
     private String productCode;
     private String productName;
     private BigDecimal currentStock;
+    private BigDecimal reservedStock;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -25,4 +26,6 @@ public class ProductionProductStock extends BaseEntity {
     public void setProductName(String productName) { this.productName = productName; }
     public BigDecimal getCurrentStock() { return currentStock; }
     public void setCurrentStock(BigDecimal currentStock) { this.currentStock = currentStock; }
+    public BigDecimal getReservedStock() { return reservedStock; }
+    public void setReservedStock(BigDecimal reservedStock) { this.reservedStock = reservedStock; }
 }

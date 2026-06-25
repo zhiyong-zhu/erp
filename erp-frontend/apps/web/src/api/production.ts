@@ -7,6 +7,8 @@ import type {
   ProductionBoxRecord,
   ProductionBomPayload,
   ProductionBomRecord,
+  ProductionMaterialMovementPayload,
+  ProductionMaterialMovementRecord,
   ProductionProductStockRecord,
   ProductionProcessPayload,
   ProductionProcessRecord,
@@ -89,8 +91,28 @@ export async function fetchProductionReports(query: PageQuery & { batchNo?: stri
   return response.data.data;
 }
 
+export async function exportProductionReports(query: { batchNo?: string; productId?: string; status?: string }): Promise<Blob> {
+  const response = await http.get("/production/reports/export", { params: query, responseType: "blob" });
+  return response.data;
+}
+
 export async function createProductionReport(payload: ProductionReportPayload): Promise<ProductionReportRecord> {
   const response = await http.post<ApiResponse<ProductionReportRecord>>("/production/reports", payload);
+  return response.data.data;
+}
+
+export async function fetchProductionMaterialMovements(query: PageQuery & { batchId?: string; movementType?: string }): Promise<PageResult<ProductionMaterialMovementRecord>> {
+  const response = await http.get<ApiResponse<PageResult<ProductionMaterialMovementRecord>>>("/production/material-movements", { params: query });
+  return response.data.data;
+}
+
+export async function pickProductionMaterials(payload: ProductionMaterialMovementPayload): Promise<ProductionMaterialMovementRecord> {
+  const response = await http.post<ApiResponse<ProductionMaterialMovementRecord>>("/production/material-movements/pick", payload);
+  return response.data.data;
+}
+
+export async function returnProductionMaterials(payload: ProductionMaterialMovementPayload): Promise<ProductionMaterialMovementRecord> {
+  const response = await http.post<ApiResponse<ProductionMaterialMovementRecord>>("/production/material-movements/return", payload);
   return response.data.data;
 }
 

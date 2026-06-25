@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +32,7 @@ public class PurchaseExceptionServiceImpl implements PurchaseExceptionService {
     public void createInspectionException(PurchaseOrder order, PurchaseOrderItem item, String description) {
         PurchaseException exception = new PurchaseException();
         exception.setId(UUID.randomUUID());
-        exception.setExceptionNo("PEX-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        exception.setExceptionNo(generateExceptionNo());
         exception.setPurchaseOrderId(order.getId());
         exception.setPurchaseOrderItemId(item.getId());
         exception.setSupplierId(order.getSupplierId());
@@ -91,5 +92,10 @@ public class PurchaseExceptionServiceImpl implements PurchaseExceptionService {
         vo.setCreatedAt(exception.getCreatedAt());
         vo.setHandledAt(exception.getHandledAt());
         return vo;
+    }
+
+    private String generateExceptionNo() {
+        return "PEX-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + ThreadLocalRandom.current().nextInt(100, 1000);
     }
 }

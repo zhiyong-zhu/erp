@@ -125,6 +125,17 @@ export interface InventoryCheckRecord {
   createdAt?: string;
 }
 
+export interface InventoryTransferRecord {
+  id: string;
+  transferNo: string;
+  fromLocation: string;
+  toLocation: string;
+  status: string;
+  totalQuantity: number;
+  remark?: string | null;
+  createdAt?: string;
+}
+
 export interface LabelTemplateRecord {
   id?: string;
   name: string;

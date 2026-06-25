@@ -7,6 +7,8 @@ import { createInventoryTransfer, fetchInventoryTransfers } from "../../../api/i
 import { fetchMaterials } from "../../../api/material";
 import type { InventoryTransferPayload, InventoryTransferRecord } from "../../../types/inventory";
 import type { MaterialRecord } from "../../../types/material";
+import { printInventoryDocument } from "../../../utils/documentPrint";
+import { useInventoryPositions } from "../components/useInventoryPositions";
 
 const { Title, Text } = Typography;
 
@@ -19,6 +21,7 @@ export function InventoryTransferPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [materials, setMaterials] = useState<MaterialRecord[]>([]);
   const { message } = App.useApp();
+  const { locations, locationOptions, loadPositions, applyLocation } = useInventoryPositions();
 
   const materialOptions = useMemo(
     () => materials.map((item) => ({
@@ -31,6 +34,7 @@ export function InventoryTransferPage() {
   useEffect(() => {
     void loadData();
     void loadMaterials();
+    void loadPositions();
   }, []);
 
   async function loadData(nextPageNum = pageNum, nextPageSize = pageSize) {
@@ -57,9 +61,13 @@ export function InventoryTransferPage() {
     }
   }
 
-  async function handleCreate(values: InventoryTransferPayload) {
+  async function handleCreate(values: InventoryTransferPayload & { fromLocationId?: string; toLocationId?: string }) {
     try {
-      await createInventoryTransfer(values);
+      const payload = normalizeTransferPayload(
+        applyLocation(applyLocation(values, values.fromLocationId, "from"), values.toLocationId, "to"),
+        locations
+      );
+      await createInventoryTransfer(payload);
       message.success("调拨完成");
       setCreateOpen(false);
       await loadData(1, pageSize);
@@ -83,7 +91,14 @@ export function InventoryTransferPage() {
       render: (value: string) => <Tag color={value === "COMPLETED" ? "green" : "default"}>{value}</Tag>
     },
     { title: "备注", dataIndex: "remark", key: "remark" },
-    { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 180 }
+    { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 180 },
+    {
+      title: "操作",
+      key: "actions",
+      width: 90,
+      fixed: "right",
+      render: (_, record) => <Button type="link" onClick={() => printInventoryDocument("transfer", record)}>打印</Button>
+    }
   ];
 
   return (
@@ -103,6 +118,7 @@ export function InventoryTransferPage() {
         columns={columns}
         dataSource={records}
         loading={loading}
+        scroll={{ x: 1100 }}
         pagination={{
           current: pageNum,
           pageSize,
@@ -117,11 +133,27 @@ export function InventoryTransferPage() {
         title="新建调拨"
         open={createOpen}
         modalProps={{ destroyOnHidden: true, onCancel: () => setCreateOpen(false), width: 760 }}
-        initialValues={{ items: [{}] }}
+        initialValues={{
+          fromBatchNo: "DEFAULT",
+          toBatchNo: "DEFAULT",
+          items: [{}]
+        }}
         onFinish={handleCreate}
       >
-        <ProFormText name="fromLocation" label="调出位置" placeholder="如：主仓 / A区 / A-01" rules={[{ required: true, message: "请输入调出位置" }]} />
-        <ProFormText name="toLocation" label="调入位置" placeholder="如：副仓 / B区 / B-02" rules={[{ required: true, message: "请输入调入位置" }]} />
+        <ProFormSelect
+          name="fromLocationId"
+          label="调出库位"
+          options={locationOptions}
+          rules={[{ required: true, message: "请选择调出库位" }]}
+        />
+        <ProFormText name="fromBatchNo" label="调出批次" rules={[{ required: true, message: "请输入调出批次" }]} />
+        <ProFormSelect
+          name="toLocationId"
+          label="调入库位"
+          options={locationOptions}
+          rules={[{ required: true, message: "请选择调入库位" }]}
+        />
+        <ProFormText name="toBatchNo" label="调入批次" rules={[{ required: true, message: "请输入调入批次" }]} />
         <ProFormText name="remark" label="备注" />
         <ProFormList
           name="items"
@@ -170,4 +202,23 @@ export function InventoryTransferPage() {
       </ModalForm>
     </section>
   );
+}
+
+function normalizeTransferPayload(values: Record<string, any>, locations: Array<{ id: string; warehouseName: string; code: string; name: string }>): InventoryTransferPayload {
+  const fromLocation = locations.find((item) => item.id === values.fromLocationId);
+  const toLocation = locations.find((item) => item.id === values.toLocationId);
+  const {
+    fromLocationId: _fromLocationId,
+    toLocationId: _toLocationId,
+    fromWarehouseId: _fromWarehouseId,
+    toWarehouseId: _toWarehouseId,
+    items,
+    ...rest
+  } = values;
+  return {
+    ...rest,
+    fromLocation: fromLocation ? `${fromLocation.warehouseName} / ${fromLocation.code} / ${fromLocation.name}` : rest.fromLocation,
+    toLocation: toLocation ? `${toLocation.warehouseName} / ${toLocation.code} / ${toLocation.name}` : rest.toLocation,
+    items: items ?? []
+  } as InventoryTransferPayload;
 }

@@ -8,7 +8,7 @@ import {
   ProFormTextArea
 } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
-import { App, Button, Drawer, Input, Modal, Select, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Drawer, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -25,11 +25,12 @@ import { hasPermission } from "../../../store/auth";
 import type {
   SaleOrderCreatePayload,
   SaleOrderItemPayload,
+  SaleOrderItemRecord,
   SaleOrderRecord,
   SaleOrderStatusPayload,
   ShippingOrderPayload
 } from "../../../types/sales";
-import type { ProductRecord, ProductSkuRecord } from "../../../types/product";
+import type { ProductRecord } from "../../../types/product";
 
 const { Title, Text } = Typography;
 
@@ -37,6 +38,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   PENDING_CONFIRM: { label: "待确认", color: "orange" },
   CONFIRMED: { label: "已确认", color: "blue" },
   PENDING_SHIP: { label: "待发货", color: "cyan" },
+  PARTIAL_SHIPPED: { label: "部分发货", color: "geekblue" },
   SHIPPED: { label: "已发货", color: "purple" },
   COMPLETED: { label: "已完成", color: "green" },
   CANCELLED: { label: "已取消", color: "red" },
@@ -72,11 +74,11 @@ function canConfirmOrder(status: string) {
 }
 
 function canCancelOrder(status: string) {
-  return status === "PENDING_CONFIRM";
+  return status === "PENDING_CONFIRM" || status === "CONFIRMED" || status === "PENDING_SHIP";
 }
 
 function canShipOrder(status: string) {
-  return status === "CONFIRMED" || status === "PENDING_SHIP";
+  return status === "CONFIRMED" || status === "PENDING_SHIP" || status === "PARTIAL_SHIPPED";
 }
 
 function canCompleteOrder(status: string) {
@@ -202,7 +204,7 @@ export function SaleOrderPage() {
     if (!shippingOrder) return false;
     try {
       await shipSaleOrder(shippingOrder.id, values);
-      message.success("发货成功，已扣减库存");
+      message.success("发货单已提交，待复核出库");
       setShippingOrder(null);
       await loadOrders();
       return true;
@@ -376,18 +378,11 @@ export function SaleOrderPage() {
         onFinish={editingOrder ? handleUpdate : handleCreate}
       />
 
-      {/* 发货 */}
-      <ModalForm<ShippingOrderPayload>
-        title="发货"
-        open={!!shippingOrder}
-        width={600}
-        modalProps={{ destroyOnClose: true, onCancel: () => setShippingOrder(null) }}
+      <ShippingFormModal
+        order={shippingOrder}
+        onCancel={() => setShippingOrder(null)}
         onFinish={handleShip}
-      >
-        <ProFormText name="carrierName" label="承运商" placeholder="如：顺丰、中通" />
-        <ProFormText name="trackingNumber" label="运单号" />
-        <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} />
-      </ModalForm>
+      />
 
       {/* PDF 预览 */}
       <Modal
@@ -414,6 +409,176 @@ export function SaleOrderPage() {
       </Modal>
     </section>
   );
+}
+
+function remainingQuantity(item: SaleOrderItemRecord) {
+  return Math.max(Number(item.quantity ?? 0) - Number(item.shippedQuantity ?? 0), 0);
+}
+
+function ShippingFormModal({
+  order, onCancel, onFinish
+}: {
+  order: SaleOrderRecord | null;
+  onCancel: () => void;
+  onFinish: (values: ShippingOrderPayload) => Promise<boolean>;
+}) {
+  const [carrierName, setCarrierName] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [remark, setRemark] = useState("");
+  const [lineQuantities, setLineQuantities] = useState<Record<string, number>>({});
+  const [lineSerialNos, setLineSerialNos] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!order) {
+      setCarrierName("");
+      setTrackingNumber("");
+      setRemark("");
+      setLineQuantities({});
+      setLineSerialNos({});
+      return;
+    }
+    setLineQuantities(Object.fromEntries(
+      order.items
+        .filter((item) => remainingQuantity(item) > 0)
+        .map((item) => [item.id, remainingQuantity(item)])
+    ));
+  }, [order]);
+
+  const shippableItems = order?.items.filter((item) => remainingQuantity(item) > 0) ?? [];
+  const selectedItems = shippableItems
+    .map((item) => ({
+      saleOrderItemId: item.id,
+      quantity: Number(lineQuantities[item.id] ?? 0),
+      serialNos: parseSerialNos(lineSerialNos[item.id])
+    }))
+    .filter((item) => item.quantity > 0);
+
+  async function handleOk() {
+    if (!order) return;
+    setSubmitting(true);
+    try {
+      const ok = await onFinish({
+        carrierName,
+        trackingNumber,
+        remark,
+        items: selectedItems
+      });
+      if (ok) {
+        setCarrierName("");
+        setTrackingNumber("");
+        setRemark("");
+        setLineQuantities({});
+        setLineSerialNos({});
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="发货"
+      open={!!order}
+      width={980}
+      destroyOnClose
+      onCancel={onCancel}
+      confirmLoading={submitting}
+      okButtonProps={{ disabled: selectedItems.length === 0 }}
+      okText="提交发货单"
+      cancelText="取消"
+      onOk={() => void handleOk()}
+    >
+      <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space wrap style={{ width: "100%" }}>
+          <Input
+            value={carrierName}
+            onChange={(event) => setCarrierName(event.target.value)}
+            placeholder="承运商"
+            style={{ width: 220 }}
+          />
+          <Input
+            value={trackingNumber}
+            onChange={(event) => setTrackingNumber(event.target.value)}
+            placeholder="运单号"
+            style={{ width: 260 }}
+          />
+        </Space>
+        <Table<SaleOrderItemRecord>
+          rowKey="id"
+          size="small"
+          pagination={false}
+          dataSource={shippableItems}
+          columns={[
+            { title: "SKU编码", dataIndex: "skuCode", key: "skuCode", width: 140 },
+            { title: "品名", dataIndex: "productName", key: "productName", width: 180 },
+            {
+              title: "订单数量", dataIndex: "quantity", key: "quantity", width: 90,
+              render: (value: number) => Number(value ?? 0)
+            },
+            {
+              title: "已发", dataIndex: "shippedQuantity", key: "shippedQuantity", width: 80,
+              render: (value: number) => Number(value ?? 0)
+            },
+            {
+              title: "剩余", key: "remaining", width: 80,
+              render: (_, record) => remainingQuantity(record)
+            },
+            {
+              title: "本次发货", key: "shipQuantity", width: 150,
+              render: (_, record) => {
+                const remaining = remainingQuantity(record);
+                return (
+                  <InputNumber
+                    min={0}
+                    max={remaining}
+                    precision={2}
+                    value={lineQuantities[record.id] ?? 0}
+                    style={{ width: 120 }}
+                    onChange={(value) => {
+                      const nextValue = Math.min(Math.max(Number(value ?? 0), 0), remaining);
+                      setLineQuantities((prev) => ({ ...prev, [record.id]: nextValue }));
+                    }}
+                  />
+                );
+              }
+            },
+            {
+              title: "本次序列号", key: "serialNos", width: 260,
+              render: (_, record) => (
+                <Input.TextArea
+                  value={lineSerialNos[record.id] ?? ""}
+                  placeholder="可选；多个序列号用换行或逗号分隔"
+                  autoSize={{ minRows: 1, maxRows: 3 }}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setLineSerialNos((prev) => ({ ...prev, [record.id]: value }));
+                  }}
+                />
+              )
+            }
+          ]}
+        />
+        <Input.TextArea
+          value={remark}
+          onChange={(event) => setRemark(event.target.value)}
+          placeholder="备注"
+          autoSize={{ minRows: 2, maxRows: 4 }}
+        />
+      </Space>
+    </Modal>
+  );
+}
+
+function parseSerialNos(value?: string) {
+  if (!value?.trim()) {
+    return undefined;
+  }
+  const serialNos = value
+    .split(/[\n,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return serialNos.length > 0 ? serialNos : undefined;
 }
 
 function OrderFormModal({

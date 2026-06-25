@@ -132,6 +132,61 @@ export interface ProductionReportPayload extends BasePayload {
   remark?: string;
 }
 
+export interface ProductionMaterialMovementItemRecord {
+  id: string;
+  movementId: string;
+  materialId: string;
+  materialCode?: string | null;
+  materialName?: string | null;
+  quantity: number;
+  warehouseCode?: string | null;
+  warehouseName?: string | null;
+  locationCode?: string | null;
+  locationName?: string | null;
+  batchNo?: string | null;
+  remark?: string | null;
+}
+
+export interface ProductionMaterialMovementRecord extends BaseRecord {
+  id: string;
+  movementNo: string;
+  movementType: "PICK" | "RETURN";
+  batchId: string;
+  batchNo: string;
+  inventoryDocumentId?: string | null;
+  inventoryDocumentNo?: string | null;
+  status: string;
+  totalQuantity: number;
+  warehouseCode?: string | null;
+  warehouseName?: string | null;
+  locationCode?: string | null;
+  locationName?: string | null;
+  batchNoInventory?: string | null;
+  remark?: string | null;
+  items?: ProductionMaterialMovementItemRecord[];
+}
+
+export interface ProductionMaterialMovementPayload extends BasePayload {
+  batchId: string;
+  idempotencyKey?: string;
+  warehouseCode?: string;
+  warehouseName?: string;
+  locationCode?: string;
+  locationName?: string;
+  batchNo?: string;
+  remark?: string;
+  items: Array<{
+    materialId: string;
+    quantity: number;
+    warehouseCode?: string;
+    warehouseName?: string;
+    locationCode?: string;
+    locationName?: string;
+    batchNo?: string;
+    remark?: string;
+  }>;
+}
+
 export interface SerialNumberGeneratePayload extends BasePayload {
   quantity?: number;
   prefix?: string;

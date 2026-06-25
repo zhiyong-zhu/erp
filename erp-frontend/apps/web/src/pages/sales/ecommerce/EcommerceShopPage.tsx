@@ -1,7 +1,7 @@
 import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
 import { ModalForm, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
-import { App, Button, Space, Table, Tag, Typography } from "antd";
+import { Alert, App, Button, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { createEcommerceShop, fetchEcommerceShops, syncEcommerceOrders } from "../../../api/sales";
@@ -9,6 +9,7 @@ import { hasPermission } from "../../../store/auth";
 import type { EcommerceShopRecord } from "../../../types/sales";
 
 const { Title, Text } = Typography;
+const isMockSyncEnabled = import.meta.env.DEV;
 
 const PLATFORM_MAP: Record<string, string> = {
   ALIBABA_1688: "1688",
@@ -91,7 +92,7 @@ export function EcommerceShopPage() {
           <Button
             type="link"
             icon={<SyncOutlined spin={syncingId === record.id} />}
-            disabled={record.status !== 1 || syncingId !== null}
+            disabled={!isMockSyncEnabled || record.status !== 1 || syncingId !== null}
             onClick={() => void handleSync(record.id)}
           >
             {syncingId === record.id ? "同步中..." : "同步订单"}
@@ -112,6 +113,14 @@ export function EcommerceShopPage() {
           添加店铺
         </Button>
       </div>
+
+      <Alert
+        type={isMockSyncEnabled ? "warning" : "info"}
+        showIcon
+        style={{ marginBottom: 16 }}
+        message={isMockSyncEnabled ? "当前为开发环境模拟同步" : "生产环境已禁用模拟同步"}
+        description={isMockSyncEnabled ? "同步订单按钮会调用当前 mock adapter 生成演示订单；接入真实平台授权前不要用于生产数据。" : "请接入真实平台授权与 webhook 后再启用订单同步。"}
+      />
 
       <Table
         rowKey="id"

@@ -7,6 +7,7 @@ import com.erp.sales.domain.dto.ShippingOrderRequest;
 import com.erp.sales.domain.vo.SaleOrderVO;
 import com.erp.sales.domain.vo.SaleReceivableStatVO;
 import com.erp.sales.domain.vo.ShippingVO;
+import java.io.ByteArrayInputStream;
 import java.util.UUID;
 
 public interface SaleOrderService {
@@ -17,6 +18,8 @@ public interface SaleOrderService {
     SaleOrderVO changeStatus(UUID id, SaleOrderStatusRequest request);
     SaleOrderVO ship(UUID id, ShippingOrderRequest request);
     PageVO<ShippingVO> listShipping(long pageNum, long pageSize);
+    ByteArrayInputStream exportShipping();
     ShippingVO shippingDetail(UUID id);
+    ShippingVO reviewShipping(UUID id);
     PageVO<SaleReceivableStatVO> listReceivableStats(long pageNum, long pageSize);
 }

@@ -2,6 +2,7 @@ import {
   ApartmentOutlined,
   CarOutlined,
   FileSearchOutlined,
+  HomeOutlined,
   LogoutOutlined,
   ProfileOutlined,
   SafetyCertificateOutlined,
@@ -15,7 +16,7 @@ import {
 import { Layout, Menu, Typography, App as AntApp, Button } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
+import { INVENTORY_PERMISSIONS, MATERIAL_PERMISSIONS, PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS, PURCHASE_PERMISSIONS, SALES_PERMISSIONS, SYSTEM_PERMISSIONS } from "@erp/shared";
 import { logout } from "../api/auth";
 import { clearAuth, getAuthState, hasPermission, subscribeAuth } from "../store/auth";
 
@@ -43,6 +44,12 @@ export function AppLayout() {
   const currentUser = getAuthState().user;
   const menuItems = useMemo(
     () => [
+      {
+        key: "/dashboard",
+        icon: <HomeOutlined />,
+        label: "运营首页",
+        onClick: () => navigate("/dashboard")
+      },
       {
         key: "/system",
         icon: <SettingOutlined />,
@@ -127,7 +134,7 @@ export function AppLayout() {
           hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
             ? { key: "/material/materials", icon: <TeamOutlined />, label: "原料列表", onClick: () => navigate("/material/materials") }
             : null,
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+          hasPermission(INVENTORY_PERMISSIONS.TRANSACTION_LIST)
             ? { key: "/material/inventory", icon: <FileSearchOutlined />, label: "库存台账", onClick: () => navigate("/material/inventory") }
             : null,
           hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
@@ -152,19 +159,25 @@ export function AppLayout() {
         icon: <FileSearchOutlined />,
         label: "库存管理",
         children: [
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+          hasPermission(INVENTORY_PERMISSIONS.WAREHOUSE_LIST)
+            ? { key: "/inventory/warehouses", icon: <ProfileOutlined />, label: "仓库管理", onClick: () => navigate("/inventory/warehouses") }
+            : null,
+          hasPermission(INVENTORY_PERMISSIONS.LOCATION_LIST)
+            ? { key: "/inventory/locations", icon: <ProfileOutlined />, label: "库位管理", onClick: () => navigate("/inventory/locations") }
+            : null,
+          hasPermission(INVENTORY_PERMISSIONS.RECEIPT_LIST)
             ? { key: "/inventory/receipts", icon: <ProfileOutlined />, label: "正式入库单", onClick: () => navigate("/inventory/receipts") }
             : null,
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+          hasPermission(INVENTORY_PERMISSIONS.ISSUE_LIST)
             ? { key: "/inventory/issues", icon: <ProfileOutlined />, label: "出库管理", onClick: () => navigate("/inventory/issues") }
             : null,
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+          hasPermission(INVENTORY_PERMISSIONS.TRANSFER_LIST)
             ? { key: "/inventory/transfers", icon: <ProfileOutlined />, label: "调拨管理", onClick: () => navigate("/inventory/transfers") }
             : null,
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_UPDATE)
+          hasPermission(INVENTORY_PERMISSIONS.CHECK_LIST)
             ? { key: "/inventory/checks", icon: <ProfileOutlined />, label: "盘点管理", onClick: () => navigate("/inventory/checks") }
             : null,
-          hasPermission(MATERIAL_PERMISSIONS.MATERIAL_LIST)
+          hasPermission(INVENTORY_PERMISSIONS.TRANSACTION_LIST)
             ? { key: "/inventory/transactions", icon: <ProfileOutlined />, label: "库存流水", onClick: () => navigate("/inventory/transactions") }
             : null
         ].filter(Boolean)
@@ -200,7 +213,7 @@ export function AppLayout() {
             : null
         ].filter(Boolean)
       }
-    ].filter((item) => Array.isArray(item.children) && item.children.length > 0),
+    ].filter((item) => !("children" in item) || (Array.isArray(item.children) && item.children.length > 0)),
     [navigate, currentUser]
   );
 
@@ -273,6 +286,8 @@ export function AppLayout() {
     selectedKeys = ["/sales/exceptions"];
   } else if (location.pathname.startsWith("/sales/ecommerce")) {
     selectedKeys = ["/sales/ecommerce"];
+  } else if (location.pathname.startsWith("/dashboard")) {
+    selectedKeys = ["/dashboard"];
   }
 
   return (

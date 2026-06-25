@@ -1,6 +1,7 @@
 package com.erp.sales.domain.vo;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public class ShippingVO {
@@ -13,6 +14,7 @@ public class ShippingVO {
     private OffsetDateTime shippedAt;
     private OffsetDateTime receivedAt;
     private String remark;
+    private List<ShippingItemVO> items;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -34,6 +36,8 @@ public class ShippingVO {
     public void setReceivedAt(OffsetDateTime receivedAt) { this.receivedAt = receivedAt; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+    public List<ShippingItemVO> getItems() { return items; }
+    public void setItems(List<ShippingItemVO> items) { this.items = items; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

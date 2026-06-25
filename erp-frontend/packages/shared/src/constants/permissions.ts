@@ -71,6 +71,29 @@ export const MATERIAL_PERMISSIONS = {
 
 export type MaterialPermissionCode = (typeof MATERIAL_PERMISSIONS)[keyof typeof MATERIAL_PERMISSIONS];
 
+export const INVENTORY_PERMISSIONS = {
+  ROOT: "inventory",
+  WAREHOUSE_LIST: "inventory:warehouse:list",
+  WAREHOUSE_CREATE: "inventory:warehouse:create",
+  WAREHOUSE_UPDATE: "inventory:warehouse:update",
+  LOCATION_LIST: "inventory:location:list",
+  LOCATION_CREATE: "inventory:location:create",
+  LOCATION_UPDATE: "inventory:location:update",
+  RECEIPT_LIST: "inventory:receipt:list",
+  ISSUE_LIST: "inventory:issue:list",
+  ISSUE_CREATE: "inventory:issue:create",
+  TRANSFER_LIST: "inventory:transfer:list",
+  TRANSFER_CREATE: "inventory:transfer:create",
+  CHECK_LIST: "inventory:check:list",
+  CHECK_CREATE: "inventory:check:create",
+  CHECK_REVIEW: "inventory:check:review",
+  CHECK_APPROVE: "inventory:check:approve",
+  CHECK_REJECT: "inventory:check:reject",
+  TRANSACTION_LIST: "inventory:transaction:list"
+} as const;
+
+export type InventoryPermissionCode = (typeof INVENTORY_PERMISSIONS)[keyof typeof INVENTORY_PERMISSIONS];
+
 export const PURCHASE_PERMISSIONS = {
   ROOT: "purchase",
   ORDER_LIST: "purchase:order:list",

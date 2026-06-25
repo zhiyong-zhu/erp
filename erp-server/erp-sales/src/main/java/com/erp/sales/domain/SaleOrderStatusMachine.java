@@ -8,6 +8,7 @@ public final class SaleOrderStatusMachine {
     public static final String PENDING_CONFIRM = "PENDING_CONFIRM";
     public static final String CONFIRMED = "CONFIRMED";
     public static final String PENDING_SHIP = "PENDING_SHIP";
+    public static final String PARTIAL_SHIPPED = "PARTIAL_SHIPPED";
     public static final String SHIPPED = "SHIPPED";
     public static final String COMPLETED = "COMPLETED";
     public static final String CANCELLED = "CANCELLED";
@@ -21,8 +22,8 @@ public final class SaleOrderStatusMachine {
     public static final String ACTION_REQUEST_RETURN = "requestReturn";
 
     private static final Map<String, Transition> TRANSITIONS = Map.of(
-            ACTION_CONFIRM, new Transition(List.of(PENDING_CONFIRM), CONFIRMED),
-            ACTION_CANCEL, new Transition(List.of(PENDING_CONFIRM), CANCELLED),
+            ACTION_CONFIRM, new Transition(List.of(PENDING_CONFIRM), PENDING_SHIP),
+            ACTION_CANCEL, new Transition(List.of(PENDING_CONFIRM, CONFIRMED, PENDING_SHIP), CANCELLED),
             ACTION_COMPLETE, new Transition(List.of(SHIPPED), COMPLETED),
             ACTION_REQUEST_RETURN, new Transition(List.of(SHIPPED, COMPLETED), RETURN_REQUEST)
     );
@@ -48,14 +49,17 @@ public final class SaleOrderStatusMachine {
     }
 
     public static void ensureCanShip(String currentStatus) {
-        if (!CONFIRMED.equals(currentStatus) && !PENDING_SHIP.equals(currentStatus)) {
+        if (!CONFIRMED.equals(currentStatus) && !PENDING_SHIP.equals(currentStatus) && !PARTIAL_SHIPPED.equals(currentStatus)) {
             throw new BizException(10004, "只有已确认或待发货订单允许发货");
         }
     }
 
     public static void ensureCanCreateReturn(String currentStatus) {
-        if (!SHIPPED.equals(currentStatus) && !COMPLETED.equals(currentStatus) && !RETURN_REQUEST.equals(currentStatus)) {
-            throw new BizException(10004, "只有已发货、已完成或已申请退货订单允许创建退货单");
+        if (!SHIPPED.equals(currentStatus)
+                && !COMPLETED.equals(currentStatus)
+                && !RETURN_REQUEST.equals(currentStatus)
+                && !RETURNING.equals(currentStatus)) {
+            throw new BizException(10004, "只有已发货、已完成、已申请退货或退货中订单允许创建退货单");
         }
     }
 
@@ -64,6 +68,7 @@ public final class SaleOrderStatusMachine {
             case PENDING_CONFIRM -> "待确认";
             case CONFIRMED -> "已确认";
             case PENDING_SHIP -> "待发货";
+            case PARTIAL_SHIPPED -> "部分发货";
             case SHIPPED -> "已发货";
             case COMPLETED -> "已完成";
             case CANCELLED -> "已取消";

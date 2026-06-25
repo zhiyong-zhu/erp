@@ -7,8 +7,8 @@ import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.inventory.domain.entity.InventoryTransaction;
 import com.erp.inventory.mapper.InventoryTransactionMapper;
-import com.erp.material.domain.entity.Material;
-import com.erp.material.mapper.MaterialMapper;
+import com.erp.product.domain.entity.ProductSku;
+import com.erp.product.mapper.ProductSkuMapper;
 import com.erp.production.domain.entity.ProductionProductStock;
 import com.erp.production.mapper.ProductionProductStockMapper;
 import com.erp.sales.domain.SaleOrderStatusMachine;
@@ -28,8 +28,11 @@ import com.erp.sales.service.SaleReturnService;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -40,12 +43,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SaleReturnServiceImpl implements SaleReturnService {
     private static final Logger log = LoggerFactory.getLogger(SaleReturnServiceImpl.class);
+    private static final List<String> RETURN_ACTIVE_OR_EFFECTIVE_STATUSES = List.of(
+            "PENDING_REVIEW", "APPROVED", "INSPECTED", "REFUNDED", "COMPLETED"
+    );
 
     private final SaleReturnMapper saleReturnMapper;
     private final SaleReturnItemMapper saleReturnItemMapper;
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
-    private final MaterialMapper materialMapper;
+    private final ProductSkuMapper productSkuMapper;
     private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
     private final SaleExceptionService saleExceptionService;
@@ -55,7 +61,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             SaleReturnItemMapper saleReturnItemMapper,
             SaleOrderMapper saleOrderMapper,
             SaleOrderItemMapper saleOrderItemMapper,
-            MaterialMapper materialMapper,
+            ProductSkuMapper productSkuMapper,
             ProductionProductStockMapper productStockMapper,
             InventoryTransactionMapper inventoryTransactionMapper,
             SaleExceptionService saleExceptionService
@@ -64,7 +70,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         this.saleReturnItemMapper = saleReturnItemMapper;
         this.saleOrderMapper = saleOrderMapper;
         this.saleOrderItemMapper = saleOrderItemMapper;
-        this.materialMapper = materialMapper;
+        this.productSkuMapper = productSkuMapper;
         this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
         this.saleExceptionService = saleExceptionService;
@@ -107,16 +113,37 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         saleReturn.setCreatedAt(OffsetDateTime.now());
         saleReturn.setUpdatedBy(SecurityUtils.getUserId());
         saleReturn.setUpdatedAt(OffsetDateTime.now());
+        saleReturn.setTotalAmount(BigDecimal.ZERO);
+
+        saleReturnMapper.insert(saleReturn);
 
         Map<UUID, SaleOrderItem> orderItemMap = saleOrderItemMapper.selectBySaleOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(SaleOrderItem::getId, item -> item));
+        Map<UUID, BigDecimal> existingReturnQuantities = activeReturnQuantities(order.getId());
+        Set<UUID> requestedItemIds = new HashSet<>();
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (SaleReturnRequest.Item itemReq : request.getItems()) {
+            if (itemReq.getSaleOrderItemId() == null) {
+                throw new BizException(10004, "退货明细必须指定销售订单明细");
+            }
+            if (!requestedItemIds.add(itemReq.getSaleOrderItemId())) {
+                throw new BizException(10004, "退货明细重复: " + itemReq.getSaleOrderItemId());
+            }
             SaleOrderItem orderItem = orderItemMap.get(itemReq.getSaleOrderItemId());
             if (orderItem == null) {
                 throw new BizException(10004, "订单明细不存在: " + itemReq.getSaleOrderItemId());
             }
+            BigDecimal returnQuantity = safe(itemReq.getQuantity());
+            if (returnQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BizException(10004, "退货数量必须大于0");
+            }
+            BigDecimal returnableQuantity = safe(orderItem.getShippedQuantity())
+                    .subtract(existingReturnQuantities.getOrDefault(orderItem.getId(), BigDecimal.ZERO));
+            if (returnQuantity.compareTo(returnableQuantity) > 0) {
+                throw new BizException(10004, "退货数量不能超过可退数量: " + orderItem.getSkuCode());
+            }
+
             SaleReturnItem returnItem = new SaleReturnItem();
             returnItem.setId(UUID.randomUUID());
             returnItem.setSaleReturnId(saleReturn.getId());
@@ -124,10 +151,10 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             returnItem.setSkuId(orderItem.getSkuId());
             returnItem.setSkuCode(orderItem.getSkuCode());
             returnItem.setProductName(orderItem.getProductName());
-            returnItem.setQuantity(itemReq.getQuantity());
+            returnItem.setQuantity(returnQuantity);
             returnItem.setUnitPrice(orderItem.getUnitPrice());
-            BigDecimal returnAmount = itemReq.getQuantity() != null && orderItem.getUnitPrice() != null
-                    ? itemReq.getQuantity().multiply(orderItem.getUnitPrice()) : BigDecimal.ZERO;
+            BigDecimal returnAmount = orderItem.getUnitPrice() != null
+                    ? returnQuantity.multiply(orderItem.getUnitPrice()) : BigDecimal.ZERO;
             returnItem.setReturnAmount(returnAmount);
             returnItem.setReason(itemReq.getReason());
             returnItem.setCreatedAt(OffsetDateTime.now());
@@ -136,7 +163,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         }
 
         saleReturn.setTotalAmount(totalAmount);
-        saleReturnMapper.insert(saleReturn);
+        saleReturnMapper.updateById(saleReturn);
 
         // Update order status to RETURNING
         order.setStatus(SaleOrderStatusMachine.RETURNING);
@@ -189,10 +216,11 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             case "complete" -> {
                 ensureStatus(saleReturn, "REFUNDED");
                 saleReturn.setStatus("COMPLETED");
-                // Update order status to RETURNED
                 SaleOrder order = saleOrderMapper.selectById(saleReturn.getSaleOrderId());
                 if (order != null) {
-                    order.setStatus(SaleOrderStatusMachine.RETURNED);
+                    order.setStatus(isFullyReturned(order.getId())
+                            ? SaleOrderStatusMachine.RETURNED
+                            : SaleOrderStatusMachine.RETURNING);
                     order.setUpdatedBy(SecurityUtils.getUserId());
                     order.setUpdatedAt(OffsetDateTime.now());
                     saleOrderMapper.updateById(order);
@@ -207,6 +235,36 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         saleReturn.setUpdatedAt(OffsetDateTime.now());
         saleReturnMapper.updateById(saleReturn);
         return toVO(saleReturn);
+    }
+
+    private Map<UUID, BigDecimal> activeReturnQuantities(UUID saleOrderId) {
+        List<SaleReturn> existingReturns = saleReturnMapper.selectList(
+                new LambdaQueryWrapper<SaleReturn>()
+                        .eq(SaleReturn::getSaleOrderId, saleOrderId)
+                        .in(SaleReturn::getStatus, RETURN_ACTIVE_OR_EFFECTIVE_STATUSES)
+        );
+        Map<UUID, BigDecimal> quantities = new HashMap<>();
+        for (SaleReturn existingReturn : existingReturns == null ? List.<SaleReturn>of() : existingReturns) {
+            List<SaleReturnItem> items = saleReturnItemMapper.selectBySaleReturnId(existingReturn.getId());
+            for (SaleReturnItem item : items == null ? List.<SaleReturnItem>of() : items) {
+                if (item.getSaleOrderItemId() != null) {
+                    quantities.merge(item.getSaleOrderItemId(), safe(item.getQuantity()), BigDecimal::add);
+                }
+            }
+        }
+        return quantities;
+    }
+
+    private boolean isFullyReturned(UUID saleOrderId) {
+        List<SaleOrderItem> orderItems = saleOrderItemMapper.selectBySaleOrderId(saleOrderId);
+        if (orderItems == null || orderItems.isEmpty()) {
+            return false;
+        }
+        Map<UUID, BigDecimal> returnQuantities = activeReturnQuantities(saleOrderId);
+        return orderItems.stream()
+                .allMatch(item -> returnQuantities
+                        .getOrDefault(item.getId(), BigDecimal.ZERO)
+                        .compareTo(safe(item.getShippedQuantity())) >= 0);
     }
 
     private void createReturnInTransactions(SaleReturn saleReturn) {
@@ -244,20 +302,7 @@ public class SaleReturnServiceImpl implements SaleReturnService {
                 continue;
             }
 
-            Material material = findMaterialFallback(item);
-            if (material == null) {
-                throw new BizException(10004, "未找到可退货入库的成品或原料: " + item.getSkuCode());
-            }
-            BigDecimal newStock = safe(material.getCurrentStock()).add(quantity);
-            material.setCurrentStock(newStock);
-            material.setUpdatedBy(SecurityUtils.getUserId());
-            material.setUpdatedAt(OffsetDateTime.now());
-            materialMapper.updateById(material);
-            txn.setMaterialId(material.getId());
-            txn.setMaterialCode(material.getCode());
-            txn.setMaterialName(material.getName());
-            txn.setBalanceAfter(newStock);
-            inventoryTransactionMapper.insert(txn);
+            throw new BizException(10004, "未找到可退货入库的成品库存: " + item.getSkuCode());
         }
     }
 
@@ -273,27 +318,25 @@ public class SaleReturnServiceImpl implements SaleReturnService {
     }
 
     private ProductionProductStock findProductStock(SaleReturnItem item) {
-        if (item.getSkuId() != null) {
-            ProductionProductStock byProductId = productStockMapper.selectOne(
-                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, item.getSkuId()));
-            if (byProductId != null) {
-                return byProductId;
-            }
+        ProductSku sku = findSku(item.getSkuId(), item.getSkuCode());
+        if (sku == null || sku.getProductId() == null) {
+            throw new BizException(10004, "未找到退货明细对应的产品 SKU: " + item.getSkuCode());
         }
-        if (item.getSkuCode() != null && !item.getSkuCode().isBlank()) {
-            return productStockMapper.selectOne(
-                    new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductCode, item.getSkuCode()));
-        }
-        return null;
+        return productStockMapper.selectOne(
+                new LambdaQueryWrapper<ProductionProductStock>().eq(ProductionProductStock::getProductId, sku.getProductId()));
     }
 
-    private Material findMaterialFallback(SaleReturnItem item) {
-        if (item.getSkuCode() == null || item.getSkuCode().isBlank()) {
-            return null;
+    private ProductSku findSku(UUID skuId, String skuCode) {
+        if (skuId != null) {
+            ProductSku byId = productSkuMapper.selectById(skuId);
+            if (byId != null) {
+                return byId;
+            }
         }
-        List<Material> candidates = materialMapper.selectList(
-                new LambdaQueryWrapper<Material>().eq(Material::getCode, item.getSkuCode()));
-        return candidates.isEmpty() ? null : candidates.get(0);
+        if (skuCode != null && !skuCode.isBlank()) {
+            return productSkuMapper.selectBySkuCode(skuCode);
+        }
+        return null;
     }
 
     private SaleReturn getReturn(UUID id) {
@@ -322,7 +365,8 @@ public class SaleReturnServiceImpl implements SaleReturnService {
         vo.setTotalAmount(saleReturn.getTotalAmount());
         vo.setReason(saleReturn.getReason());
         vo.setRemark(saleReturn.getRemark());
-        vo.setItems(saleReturnItemMapper.selectBySaleReturnId(saleReturn.getId()).stream().map(this::toItemVO).toList());
+        List<SaleReturnItem> items = saleReturnItemMapper.selectBySaleReturnId(saleReturn.getId());
+        vo.setItems((items == null ? List.<SaleReturnItem>of() : items).stream().map(this::toItemVO).toList());
         return vo;
     }
 

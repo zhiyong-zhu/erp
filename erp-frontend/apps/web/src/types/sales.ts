@@ -106,6 +106,11 @@ export interface ShippingOrderPayload {
   carrierName?: string;
   trackingNumber?: string;
   remark?: string;
+  items?: Array<{
+    saleOrderItemId: string;
+    quantity: number;
+    serialNos?: string[];
+  }>;
 }
 
 // ========== 销售退货 ==========
@@ -162,6 +167,19 @@ export interface ShippingRecord extends BaseRecord {
   shippedAt?: string | null;
   receivedAt?: string | null;
   remark?: string | null;
+  items?: ShippingItemRecord[];
+}
+
+export interface ShippingItemRecord {
+  id: string;
+  shippingOrderId: string;
+  saleOrderItemId: string;
+  skuId?: string | null;
+  skuCode?: string | null;
+  productName?: string | null;
+  quantity: number;
+  serialNos?: string[];
+  createdAt?: string | null;
 }
 
 // ========== 应收统计 ==========

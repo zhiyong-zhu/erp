@@ -7,9 +7,7 @@ import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.inventory.domain.dto.InventoryReceiptCreateRequest;
 import com.erp.inventory.service.InventoryReceiptService;
-import com.erp.material.domain.entity.Material;
 import com.erp.material.domain.vo.MaterialReplenishmentVO;
-import com.erp.material.mapper.MaterialMapper;
 import com.erp.material.service.MaterialService;
 import com.erp.purchase.domain.dto.PurchaseDraftGenerateRequest;
 import com.erp.purchase.domain.dto.PurchaseOrderItemUpdateRequest;
@@ -31,9 +29,11 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +43,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final PurchaseOrderMapper purchaseOrderMapper;
     private final PurchaseOrderItemMapper purchaseOrderItemMapper;
     private final MaterialService materialService;
-    private final MaterialMapper materialMapper;
     private final InventoryReceiptService inventoryReceiptService;
     private final PurchaseReturnMapper purchaseReturnMapper;
     private final PurchaseExceptionService purchaseExceptionService;
@@ -52,7 +51,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             PurchaseOrderMapper purchaseOrderMapper,
             PurchaseOrderItemMapper purchaseOrderItemMapper,
             MaterialService materialService,
-            MaterialMapper materialMapper,
             InventoryReceiptService inventoryReceiptService,
             PurchaseReturnMapper purchaseReturnMapper,
             PurchaseExceptionService purchaseExceptionService
@@ -60,7 +58,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         this.purchaseOrderMapper = purchaseOrderMapper;
         this.purchaseOrderItemMapper = purchaseOrderItemMapper;
         this.materialService = materialService;
-        this.materialMapper = materialMapper;
         this.inventoryReceiptService = inventoryReceiptService;
         this.purchaseReturnMapper = purchaseReturnMapper;
         this.purchaseExceptionService = purchaseExceptionService;
@@ -213,6 +210,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         if (!"APPROVED".equals(order.getStatus()) && !"PARTIAL_RECEIVED".equals(order.getStatus())) {
             throw new BizException(10004, "当前采购单状态不允许收货");
         }
+        String receiveIdempotencyKey = resolveReceiveIdempotencyKey(order, request);
+        if (inventoryReceiptService.receiptExistsByIdempotencyKey(receiveIdempotencyKey)) {
+            return toVO(order);
+        }
 
         Map<UUID, PurchaseOrderItem> itemMap = purchaseOrderItemMapper.selectByPurchaseOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(PurchaseOrderItem::getId, item -> item));
@@ -256,18 +257,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                                 : receiveItem.getExceptionReason()
                 );
             }
-
-            Material material = materialMapper.selectById(item.getMaterialId());
-            if (material != null) {
-                material.setCurrentStock(safe(material.getCurrentStock()).add(acceptedQuantity));
-                materialMapper.updateById(material);
-            }
         }
 
         InventoryReceiptCreateRequest receiptRequest = new InventoryReceiptCreateRequest();
         receiptRequest.setSourceType("PURCHASE");
         receiptRequest.setSourceOrderId(order.getId());
         receiptRequest.setSourceOrderNo(order.getOrderNo());
+        receiptRequest.setIdempotencyKey(receiveIdempotencyKey);
         receiptRequest.setSupplierId(order.getSupplierId());
         receiptRequest.setSupplierName(order.getSupplierName());
         receiptRequest.setRemark("采购收货入库");
@@ -296,6 +292,24 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return toVO(order);
     }
 
+    private String resolveReceiveIdempotencyKey(PurchaseOrder order, PurchaseOrderReceiveRequest request) {
+        if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+            return "PURCHASE_RECEIVE:" + request.getIdempotencyKey().trim();
+        }
+        String itemsDigest = request.getItems().stream()
+                .sorted(Comparator.comparing(item -> item.getItemId().toString()))
+                .map(item -> item.getItemId()
+                        + ":" + normalizeAmount(item.getReceivedQuantity())
+                        + ":" + normalizeAmount(item.getAcceptedQuantity())
+                        + ":" + normalizeAmount(item.getRejectedQuantity()))
+                .collect(Collectors.joining("|"));
+        return "PURCHASE_RECEIVE:" + order.getId() + ":" + itemsDigest;
+    }
+
+    private String normalizeAmount(BigDecimal amount) {
+        return safe(amount).stripTrailingZeros().toPlainString();
+    }
+
     @Override
     public PageVO<PurchasePayableStatVO> listPayableStats(long pageNum, long pageSize) {
         List<PurchaseOrder> orders = purchaseOrderMapper.selectList(
@@ -317,8 +331,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             List<PurchaseReturn> supplierReturns = returnsBySupplier.getOrDefault(supplierId, List.of());
 
             BigDecimal orderAmount = supplierOrders.stream()
-                    .map(PurchaseOrder::getTotalAmount)
-                    .filter(amount -> amount != null)
+                    .map(this::acceptedAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal returnAmount = supplierReturns.stream()
                     .map(PurchaseReturn::getTotalAmount)
@@ -340,6 +353,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         int toIndex = (int) Math.min(fromIndex + pageSize, stats.size());
         List<PurchasePayableStatVO> records = fromIndex >= stats.size() ? List.of() : stats.subList(fromIndex, toIndex);
         return new PageVO<>(records, (long) stats.size(), pageNum, pageSize);
+    }
+
+    private BigDecimal acceptedAmount(PurchaseOrder order) {
+        return purchaseOrderItemMapper.selectByPurchaseOrderId(order.getId()).stream()
+                .map(item -> safe(item.getAcceptedQuantity()).multiply(safe(item.getQuotePrice())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void replaceItems(PurchaseOrder order, List<PurchaseOrderItemUpdateRequest> itemRequests) {
@@ -435,7 +454,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     }
 
     private String generateOrderNo(String prefix) {
-        return prefix + "-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        return prefix + "-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + ThreadLocalRandom.current().nextInt(100, 1000);
     }
 
     private BigDecimal safe(BigDecimal value) {

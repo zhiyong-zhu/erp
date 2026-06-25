@@ -12,8 +12,8 @@ const { Title, Text } = Typography;
 
 const serialStatusOptions = [
   { label: "已生成", value: "GENERATED" },
-  { label: "已生产", value: "PRODUCED" },
-  { label: "已检验", value: "INSPECTED" },
+  { label: "已装箱", value: "PACKED" },
+  { label: "已入库", value: "STOCKED" },
   { label: "已发货", value: "SHIPPED" },
   { label: "已报废", value: "SCRAPPED" }
 ];

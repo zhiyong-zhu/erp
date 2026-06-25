@@ -6,7 +6,10 @@ import com.erp.common.core.domain.PageVO;
 import com.erp.common.core.exception.BizException;
 import com.erp.common.security.util.SecurityUtils;
 import com.erp.inventory.domain.entity.InventoryTransaction;
+import com.erp.inventory.domain.entity.InventoryBalance;
 import com.erp.inventory.mapper.InventoryTransactionMapper;
+import com.erp.inventory.service.InventoryBalanceService;
+import com.erp.inventory.service.InventoryBalanceService.InventoryPosition;
 import com.erp.material.domain.entity.Material;
 import com.erp.material.mapper.MaterialMapper;
 import com.erp.purchase.domain.dto.PurchaseReturnRequest;
@@ -26,6 +29,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +42,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
     private final PurchaseOrderItemMapper purchaseOrderItemMapper;
     private final MaterialMapper materialMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
+    private final InventoryBalanceService inventoryBalanceService;
 
     public PurchaseReturnServiceImpl(
             PurchaseReturnMapper purchaseReturnMapper,
@@ -45,7 +50,8 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
             PurchaseOrderMapper purchaseOrderMapper,
             PurchaseOrderItemMapper purchaseOrderItemMapper,
             MaterialMapper materialMapper,
-            InventoryTransactionMapper inventoryTransactionMapper
+            InventoryTransactionMapper inventoryTransactionMapper,
+            InventoryBalanceService inventoryBalanceService
     ) {
         this.purchaseReturnMapper = purchaseReturnMapper;
         this.purchaseReturnItemMapper = purchaseReturnItemMapper;
@@ -53,6 +59,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
         this.purchaseOrderItemMapper = purchaseOrderItemMapper;
         this.materialMapper = materialMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
+        this.inventoryBalanceService = inventoryBalanceService;
     }
 
     @Override
@@ -74,7 +81,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
         }
         PurchaseReturn purchaseReturn = new PurchaseReturn();
         purchaseReturn.setId(UUID.randomUUID());
-        purchaseReturn.setReturnNo("PR-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        purchaseReturn.setReturnNo(generateReturnNo());
         purchaseReturn.setPurchaseOrderId(order.getId());
         purchaseReturn.setPurchaseOrderNo(order.getOrderNo());
         purchaseReturn.setSupplierId(order.getSupplierId());
@@ -124,8 +131,12 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
 
             Material material = materialMapper.selectById(orderItem.getMaterialId());
             if (material != null) {
-                material.setCurrentStock(safe(material.getCurrentStock()).subtract(requestItem.getReturnQuantity()));
-                materialMapper.updateById(material);
+                BigDecimal balanceBefore = safe(material.getCurrentStock());
+                InventoryBalance balance = inventoryBalanceService.decrease(
+                        material,
+                        requestItem.getReturnQuantity(),
+                        InventoryPosition.defaults()
+                );
 
                 InventoryTransaction txn = new InventoryTransaction();
                 txn.setId(UUID.randomUUID());
@@ -134,11 +145,13 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
                 txn.setMaterialName(orderItem.getMaterialName());
                 txn.setTransactionType("PURCHASE_RETURN");
                 txn.setQuantity(requestItem.getReturnQuantity().negate());
-                txn.setBalanceAfter(material.getCurrentStock());
+                txn.setBalanceBefore(balanceBefore);
+                txn.setBalanceAfter(balance.getAvailableQuantity());
+                applyPosition(txn, balance);
                 txn.setSourceType("PURCHASE_RETURN");
-                txn.setSourceOrderId(order.getId());
-                txn.setSourceOrderNo(order.getOrderNo());
-                txn.setSourceItemId(orderItem.getId());
+                txn.setSourceOrderId(purchaseReturn.getId());
+                txn.setSourceOrderNo(purchaseReturn.getReturnNo());
+                txn.setSourceItemId(returnItem.getId());
                 txn.setRemark(requestItem.getReason());
                 txn.setCreatedBy(SecurityUtils.getUserId());
                 txn.setCreatedAt(OffsetDateTime.now());
@@ -183,5 +196,18 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
 
     private BigDecimal safe(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String generateReturnNo() {
+        return "PR-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + ThreadLocalRandom.current().nextInt(100, 1000);
+    }
+
+    private void applyPosition(InventoryTransaction transaction, InventoryBalance balance) {
+        transaction.setWarehouseCode(balance.getWarehouseCode());
+        transaction.setWarehouseName(balance.getWarehouseName());
+        transaction.setLocationCode(balance.getLocationCode());
+        transaction.setLocationName(balance.getLocationName());
+        transaction.setBatchNo(balance.getBatchNo());
     }
 }
