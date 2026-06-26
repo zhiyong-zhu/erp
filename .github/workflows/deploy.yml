@@ -1,0 +1,79 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # 仅在 CI 成功或直接 push 到 main 时部署
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- 构建后端 ---
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Build backend JAR
+        run: mvn -f erp-server/pom.xml clean package -DskipTests -q
+
+      # --- 构建前端 ---
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: erp-frontend
+        run: pnpm install
+      - name: Build frontend
+        working-directory: erp-frontend
+        run: pnpm --filter @erp/web build
+
+      # --- 部署到 ECS ---
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload artifacts
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            erp-server/erp-admin/target/erp-admin-1.0.0-SNAPSHOT.jar \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/erp/erp-admin.jar
+
+          scp -i ~/.ssh/deploy_key \
+            -r erp-frontend/apps/web/dist/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/erp/dist/
+
+          scp -i ~/.ssh/deploy_key \
+            scripts/erp-admin.service \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/erp/scripts/
+
+          scp -i ~/.ssh/deploy_key \
+            scripts/nginx.conf \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/erp/scripts/
+
+      - name: Deploy on ECS
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_EOF'
+            chmod +x /opt/erp/scripts/deploy.sh
+            cd /opt/erp && ./scripts/deploy.sh
+          DEPLOY_EOF
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -rf ~/.ssh/deploy_key

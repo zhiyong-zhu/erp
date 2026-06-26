@@ -1,0 +1,26 @@
+[Unit]
+Description=ERP Admin Service
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/erp/backend
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar erp-admin-1.0.0-SNAPSHOT.jar
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+# 环境变量
+EnvironmentFile=-/opt/erp/scripts/env.production
+
+# 安全加固
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/erp/backend /opt/erp/logs /opt/erp/backups /usr/share/erp/web
+
+[Install]
+WantedBy=multi-user.target
