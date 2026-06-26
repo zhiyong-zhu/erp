@@ -68,7 +68,7 @@ jobs:
       - name: Ensure remote directories
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            "mkdir -p /opt/erp/{backend,logs,backups,scripts,dist} /usr/share/erp/web"
+            "mkdir -p /opt/erp/{backend,logs,backups,scripts,dist,tmp} /usr/share/erp/web"
 
       - name: Upload deploy script
         run: |

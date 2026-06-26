@@ -57,9 +57,6 @@ erp:
     secret-key: admin123456
     bucket: erp-dev
 
-flowable:
-  database-schema-update: false
-  async-executor-activate: true
 
 xxl:
   job:

@@ -7,11 +7,13 @@ set -euo pipefail
 DEPLOY_ROOT="/opt/erp"
 BACKEND_DIR="${DEPLOY_ROOT}/backend"
 FRONTEND_DIR="/usr/share/erp/web"
+TMP_DIR="${DEPLOY_ROOT}/tmp"
 SERVICE_NAME="erp-admin"
 JAR_FILE="erp-admin-1.0.0-SNAPSHOT.jar"
 BACKUP_DIR="${DEPLOY_ROOT}/backups"
 SYSTEMD_UNIT_SRC="${DEPLOY_ROOT}/scripts/erp-admin.service"
 NGINX_CONF_SRC="${DEPLOY_ROOT}/scripts/nginx.conf"
+ENV_FILE="${DEPLOY_ROOT}/scripts/env.production"
 HEALTH_URL="http://localhost:8080/actuator/health"
 MAX_RETRIES=30
 RETRY_INTERVAL=2
@@ -22,6 +24,13 @@ err() { echo "[$(date '+%H:%M:%S')] ERROR: $1" >&2; exit 1; }
 
 # --- 1. 安装运行时配置 ---
 install_runtime_config() {
+    mkdir -p "$BACKEND_DIR" "${DEPLOY_ROOT}/logs" "$BACKUP_DIR" "$TMP_DIR" "${DEPLOY_ROOT}/scripts" "$FRONTEND_DIR"
+
+    if [ -f "$ENV_FILE" ] && ! grep -q '^SPRING_PROFILES_ACTIVE=' "$ENV_FILE"; then
+        log "补充生产 profile 配置..."
+        printf '\nSPRING_PROFILES_ACTIVE=prod\n' >> "$ENV_FILE"
+    fi
+
     if [ -f "$SYSTEMD_UNIT_SRC" ]; then
         log "安装 systemd 服务配置..."
         cp "$SYSTEMD_UNIT_SRC" "/etc/systemd/system/${SERVICE_NAME}.service"

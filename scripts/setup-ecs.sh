@@ -95,7 +95,7 @@ log "Nginx 就绪"
 
 # ===== 7. 创建部署目录结构 =====
 log "7/8 创建部署目录..."
-mkdir -p "$DEPLOY_ROOT"/{backend,logs,backups,scripts,dist}
+mkdir -p "$DEPLOY_ROOT"/{backend,logs,backups,scripts,dist,tmp}
 mkdir -p /usr/share/erp/web
 
 # ===== 8. 写入配置文件 =====
@@ -103,6 +103,8 @@ log "8/8 写入配置文件..."
 
 # 环境变量
 cat > "$DEPLOY_ROOT/scripts/env.production" << EOF
+SPRING_PROFILES_ACTIVE=prod
+
 # 数据库
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/$DB_NAME
 SPRING_DATASOURCE_USERNAME=$DB_USER
