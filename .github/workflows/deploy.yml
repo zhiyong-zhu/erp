@@ -51,6 +51,7 @@ jobs:
 
       # --- 打包产物 ---
       - name: Package artifacts
+        if: inputs.skip_build != true
         run: |
           # 打包前端为单个 tar.gz（比逐个 scp 文件快 10 倍）
           cd erp-frontend/apps/web/dist && tar czf /tmp/web-dist.tar.gz . && cd -

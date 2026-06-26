@@ -13,10 +13,13 @@ DB_USER="erp_user"
 DB_PASSWORD="erp_password_2026"          # ← 改成你的数据库密码
 REDIS_PASSWORD=""                         # ← 如需 Redis 密码填这里
 JWT_SECRET="erp-jwt-secret-change-me-$(openssl rand -hex 16)"  # 自动生成
-MINIO_ROOT_USER="admin"
-MINIO_ROOT_PASSWORD="admin123456"         # ← 改成你的 MinIO 密码
-MINIO_BUCKET="erp-prod"
+RUSTFS_ROOT_USER="admin"
+RUSTFS_ROOT_PASSWORD="admin123456"        # ← 改成你的 RustFS 密码
+RUSTFS_BUCKET="erp-prod"
+RUSTFS_DATA_DIR="/data/rustfs0"
+RUSTFS_LOG_DIR="/var/logs/rustfs"
 DEPLOY_ROOT="/opt/erp"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ===== 1. 系统更新 + 基础软件 =====
 log "1/8 系统更新 + 安装基础软件..."
@@ -65,7 +68,20 @@ if ! command -v rustfs &> /dev/null; then
     bash install_rustfs.sh
     rm -f install_rustfs.sh
 fi
+
+mkdir -p "$RUSTFS_DATA_DIR" "$RUSTFS_LOG_DIR"
+chmod -R 750 "$RUSTFS_DATA_DIR" "$RUSTFS_LOG_DIR"
+cat > /etc/default/rustfs << EOF
+RUSTFS_ACCESS_KEY=$RUSTFS_ROOT_USER
+RUSTFS_SECRET_KEY=$RUSTFS_ROOT_PASSWORD
+RUSTFS_VOLUMES="$RUSTFS_DATA_DIR"
+RUSTFS_ADDRESS=":9000"
+RUSTFS_CONSOLE_ENABLE=true
+RUST_LOG=error
+RUSTFS_OBS_LOG_DIRECTORY="$RUSTFS_LOG_DIR"
+EOF
 systemctl enable --now rustfs 2>/dev/null || true
+systemctl restart rustfs 2>/dev/null || true
 sleep 2
 log "RustFS 就绪（API :9000，控制台 :9001）"
 
@@ -103,9 +119,9 @@ ERP_SECURITY_REFRESH_TOKEN_EXPIRE_SECONDS=604800
 
 # 对象存储
 ERP_STORAGE_ENDPOINT=http://localhost:9000
-ERP_STORAGE_ACCESS_KEY=$MINIO_ROOT_USER
-ERP_STORAGE_SECRET_KEY=$MINIO_ROOT_PASSWORD
-ERP_STORAGE_BUCKET=$MINIO_BUCKET
+ERP_STORAGE_ACCESS_KEY=$RUSTFS_ROOT_USER
+ERP_STORAGE_SECRET_KEY=$RUSTFS_ROOT_PASSWORD
+ERP_STORAGE_BUCKET=$RUSTFS_BUCKET
 
 # Flowable（禁用，节省资源）
 FLOWABLE_ASYNC_EXECUTOR_ACTIVATE=false
@@ -115,73 +131,35 @@ JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
 EOF
 
 # systemd 服务
-cat > /etc/systemd/system/erp-admin.service << 'EOF'
-[Unit]
-Description=ERP Admin Service
-After=network.target postgresql.service redis-server.service minio.service
-Wants=postgresql.service redis-server.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/erp/backend
-ExecStart=/usr/bin/java -Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar erp-admin-1.0.0-SNAPSHOT.jar
-Restart=on-failure
-RestartSec=10
-SuccessExitStatus=143
-StandardOutput=journal
-StandardError=journal
-EnvironmentFile=-/opt/erp/scripts/env.production
-
-[Install]
-WantedBy=multi-user.target
-EOF
+if [ -f "$SCRIPT_DIR/erp-admin.service" ]; then
+    cp "$SCRIPT_DIR/erp-admin.service" /etc/systemd/system/erp-admin.service
+else
+    err "未找到 $SCRIPT_DIR/erp-admin.service"
+fi
 systemctl daemon-reload
+systemctl enable erp-admin
 
 # Nginx 配置
-cat > /etc/nginx/sites-available/erp << 'EOF'
-server {
-    listen 80;
-    server_name _;
-
-    root /usr/share/erp/web;
-    index index.html;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
-    gzip_min_length 256;
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_connect_timeout 30s;
-        proxy_read_timeout 60s;
-    }
-
-    location /v3/ {
-        proxy_pass http://127.0.0.1:8080;
-    }
-
-    location /swagger-ui.html {
-        proxy_pass http://127.0.0.1:8080;
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
+if [ -f "$SCRIPT_DIR/nginx.conf" ]; then
+    cp "$SCRIPT_DIR/nginx.conf" /etc/nginx/sites-available/erp
+else
+    err "未找到 $SCRIPT_DIR/nginx.conf"
+fi
 
 ln -sf /etc/nginx/sites-available/erp /etc/nginx/sites-enabled/erp
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
+
+# 创建 RustFS bucket（若 rustfs 提供 S3 兼容 API 且凭据已生效）
+log "创建对象存储 bucket: $RUSTFS_BUCKET"
+if command -v aws &> /dev/null; then
+    AWS_ACCESS_KEY_ID="$RUSTFS_ROOT_USER" AWS_SECRET_ACCESS_KEY="$RUSTFS_ROOT_PASSWORD" \
+        aws --endpoint-url http://localhost:9000 s3 mb "s3://$RUSTFS_BUCKET" 2>/dev/null || true
+else
+    apt install -y awscli
+    AWS_ACCESS_KEY_ID="$RUSTFS_ROOT_USER" AWS_SECRET_ACCESS_KEY="$RUSTFS_ROOT_PASSWORD" \
+        aws --endpoint-url http://localhost:9000 s3 mb "s3://$RUSTFS_BUCKET" 2>/dev/null || true
+fi
 
 # ===== 防火墙 =====
 log "配置防火墙..."
@@ -203,7 +181,8 @@ echo "  Nginx       : :80"
 echo ""
 echo "密码信息（请妥善保存）："
 echo "  数据库密码   : $DB_PASSWORD"
-echo "  RustFS 密码  : $MINIO_ROOT_PASSWORD"
+echo "  RustFS 用户  : $RUSTFS_ROOT_USER"
+echo "  RustFS 密码  : $RUSTFS_ROOT_PASSWORD"
 echo "  JWT Secret   : $JWT_SECRET"
 echo ""
 echo "环境配置文件：$DEPLOY_ROOT/scripts/env.production"
