@@ -1,43 +1,51 @@
 name: Deploy to Production
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: '跳过构建，只重新部署当前 ECS 上的产物'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # 仅在 CI 成功或直接 push 到 main 时部署
-    if: >-
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - uses: actions/checkout@v4
 
       # --- 构建后端 ---
-      - uses: actions/setup-java@v4
+      - name: Build backend JAR
+        if: inputs.skip_build != true
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Build backend JAR
+      - name: Build backend
+        if: inputs.skip_build != true
         run: mvn -f erp-server/pom.xml clean package -DskipTests -q
 
       # --- 构建前端 ---
-      - uses: pnpm/action-setup@v4
+      - name: Setup frontend
+        if: inputs.skip_build != true
+        uses: pnpm/action-setup@v4
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - name: Setup node
+        if: inputs.skip_build != true
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install frontend dependencies
+        if: inputs.skip_build != true
         working-directory: erp-frontend
         run: pnpm install
       - name: Build frontend
+        if: inputs.skip_build != true
         working-directory: erp-frontend
         run: pnpm --filter @erp/web build
 
@@ -50,6 +58,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Upload artifacts
+        if: inputs.skip_build != true
         run: |
           scp -i ~/.ssh/deploy_key \
             erp-server/erp-admin/target/erp-admin-1.0.0-SNAPSHOT.jar \
@@ -70,8 +79,8 @@ jobs:
       - name: Deploy on ECS
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_EOF'
-            chmod +x /opt/erp/scripts/deploy.sh
-            cd /opt/erp && ./scripts/deploy.sh
+            chmod +x /opt/erp/scripts/deploy.sh 2>/dev/null || true
+            cd /opt/erp && bash scripts/deploy.sh
           DEPLOY_EOF
 
       - name: Cleanup SSH
