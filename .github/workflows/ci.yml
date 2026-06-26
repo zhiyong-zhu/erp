@@ -34,8 +34,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-          cache-dependency-path: erp-frontend/pnpm-lock.yaml
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('erp-frontend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build web
