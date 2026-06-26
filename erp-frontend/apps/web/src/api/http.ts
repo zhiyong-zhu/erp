@@ -11,7 +11,7 @@ interface ApiResponse<T = unknown> {
 }
 
 export const http = axios.create({
-  baseURL: "http://localhost:8080/api/v1",
+  baseURL: import.meta.env.PROD ? "/api/v1" : "http://localhost:8080/api/v1",
   timeout: 15000
 });
 
