@@ -1,14 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDatePicker,
-  ProFormDigit,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea
-} from "@ant-design/pro-components";
 import { App, Button, Table, Typography } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -202,25 +195,29 @@ function QuoteForm({
   onFinish: (values: SupplierQuotePayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<SupplierQuotePayload>
+    <CreateForm
       title={title}
       open={open}
       width={980}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { currency: "CNY" }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormSelect name="supplierId" label="供应商" options={supplierOptions} rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect name="materialId" label="原料" options={materialOptions} rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="quotePrice" label="报价" min={0.01} fieldProps={{ precision: 2 }} rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="currency" label="币种" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="minOrderQuantity" label="最小起订量" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="leadTimeDays" label="交期(天)" min={0} fieldProps={{ precision: 0 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDatePicker name="effectiveDate" label="生效日期" colProps={{ xs: 24, md: 8 }} />
-      <ProFormDatePicker name="expiryDate" label="失效日期" colProps={{ xs: 24, md: 8 }} />
-      <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "报价信息",
+          fields: [
+            { type: "select", name: "supplierId", label: "供应商", options: supplierOptions, rules: [{ required: true }], colSpan: 8 },
+            { type: "select", name: "materialId", label: "原料", options: materialOptions, rules: [{ required: true }], colSpan: 8 },
+            { type: "digit", name: "quotePrice", label: "报价", min: 0.01, precision: 2, rules: [{ required: true }], colSpan: 8 },
+            { type: "text", name: "currency", label: "币种", rules: [{ required: true }], colSpan: 8 },
+            { type: "digit", name: "minOrderQuantity", label: "最小起订量", min: 0, precision: 2, colSpan: 8 },
+            { type: "digit", name: "leadTimeDays", label: "交期(天)", min: 0, precision: 0, colSpan: 8 },
+            { type: "datepicker", name: "effectiveDate", label: "生效日期", colSpan: 8 },
+            { type: "datepicker", name: "expiryDate", label: "失效日期", colSpan: 8 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }

@@ -42,9 +42,7 @@ export const PRODUCT_PERMISSIONS = {
   PACKAGE_UPDATE: "product:package:update",
   LABEL_LIST: "product:label:list",
   LABEL_UPDATE: "product:label:update",
-  LABEL_PRINT: "product:label:print",
-  BOM_LIST: "product:bom:list",
-  BOM_UPDATE: "product:bom:update"
+  LABEL_PRINT: "product:label:print"
 } as const;
 
 export type ProductPermissionCode = (typeof PRODUCT_PERMISSIONS)[keyof typeof PRODUCT_PERMISSIONS];

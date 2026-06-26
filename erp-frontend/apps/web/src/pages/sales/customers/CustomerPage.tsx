@@ -1,12 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDigit,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea
-} from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
@@ -193,41 +187,38 @@ function CustomerForm({
   onFinish: (values: CustomerPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<CustomerPayload>
+    <CreateForm
       title={title}
       open={open}
       width={980}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { customerType: 1, status: 1 }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="code" label="客户编码" rules={[{ required: true, message: "请输入客户编码" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="name" label="客户名称" rules={[{ required: true, message: "请输入客户名称" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="shortName" label="简称" colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect
-        name="customerType" label="客户类型"
-        options={[{ label: "企业", value: 1 }, { label: "个人", value: 2 }]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormText name="contactPerson" label="联系人" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="phone" label="电话" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="email" label="邮箱" colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="creditLimit" label="信用额度" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect
-        name="paymentTerms" label="付款条件"
-        options={[{ label: "货到付款", value: 1 }, { label: "30天", value: 2 }, { label: "60天", value: 3 }, { label: "90天", value: 4 }]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormText name="taxNumber" label="税号" colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect
-        name="status" label="状态"
-        options={[{ label: "启用", value: 1 }, { label: "禁用", value: 0 }]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormTextArea name="address" label="地址" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
-      <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "基本信息",
+          fields: [
+            { type: "text", name: "code", label: "客户编码", rules: [{ required: true, message: "请输入客户编码" }], colSpan: 8 },
+            { type: "text", name: "name", label: "客户名称", rules: [{ required: true, message: "请输入客户名称" }], colSpan: 8 },
+            { type: "text", name: "shortName", label: "简称", colSpan: 8 },
+            { type: "select", name: "customerType", label: "客户类型", options: [{ label: "企业", value: 1 }, { label: "个人", value: 2 }], colSpan: 8 },
+            { type: "text", name: "contactPerson", label: "联系人", colSpan: 8 },
+            { type: "text", name: "phone", label: "电话", colSpan: 8 },
+            { type: "text", name: "email", label: "邮箱", colSpan: 8 }
+          ]
+        },
+        {
+          title: "商务信息",
+          fields: [
+            { type: "digit", name: "creditLimit", label: "信用额度", min: 0, precision: 2, colSpan: 8 },
+            { type: "select", name: "paymentTerms", label: "付款条件", options: [{ label: "货到付款", value: 1 }, { label: "30天", value: 2 }, { label: "60天", value: 3 }, { label: "90天", value: 4 }], colSpan: 8 },
+            { type: "text", name: "taxNumber", label: "税号", colSpan: 8 },
+            { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 8 },
+            { type: "textarea", name: "address", label: "地址", colSpan: 24 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }

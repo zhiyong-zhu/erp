@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Card, Space, Switch, Table, Tree, Typography } from "antd";
 import { SYSTEM_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { DataNode } from "antd/es/tree";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
@@ -189,23 +189,34 @@ function RoleForm({ title, open, initialValues, treeData, onCancel, onFinish }: 
   }, [initialValues?.permissionIds, open]);
 
   return (
-    <ModalForm<RolePayload & { permissionIds?: string[] }>
+    <CreateForm
       title={title}
       open={open}
       width={920}
       initialValues={initialValues}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={(values) => onFinish({ ...values, permissionIds: checkedKeys })}
-    >
-      <ProFormText name="name" label="角色名称" rules={[{ required: true }]} />
-      <ProFormText name="code" label="角色编码" rules={[{ required: true }]} />
-      <ProFormText name="description" label="描述" />
-      <ProFormSelect name="dataScope" label="数据范围" options={dataScopeOptions} rules={[{ required: true }]} />
-      <Card size="small" title="功能权限" className="role-form-card">
-        <Text type="secondary">目录、菜单、按钮和字段权限统一在这里分配。数据范围在上方单独配置，不放进权限树。</Text>
-        <Tree checkable defaultExpandAll checkedKeys={checkedKeys} onCheck={(keys) => setCheckedKeys((keys as string[]) ?? [])} treeData={treeData} />
-      </Card>
-    </ModalForm>
+      sections={[
+        {
+          title: "角色信息",
+          fields: [
+            { type: "text", name: "name", label: "角色名称", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "code", label: "角色编码", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "description", label: "描述", colSpan: 12 },
+            { type: "select", name: "dataScope", label: "数据范围", options: dataScopeOptions, rules: [{ required: true }], colSpan: 12 }
+          ]
+        },
+        {
+          title: "功能权限",
+          slot: (
+            <>
+              <Text type="secondary">目录、菜单、按钮和字段权限统一在这里分配。数据范围在上方单独配置，不放进权限树。</Text>
+              <Tree checkable defaultExpandAll checkedKeys={checkedKeys} onCheck={(keys) => setCheckedKeys((keys as string[]) ?? [])} treeData={treeData} />
+            </>
+          )
+        }
+      ]}
+    />
   );
 }
 

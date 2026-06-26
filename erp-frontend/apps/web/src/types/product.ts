@@ -42,6 +42,7 @@ export interface ProductRecord extends BaseRecord {
   images: string[];
   specifications?: string | null;
   status: number;
+  isSemifinished?: boolean;
   skuCount?: number | null;
   skus?: ProductSkuRecord[];
 }
@@ -61,26 +62,6 @@ export interface ProductPackageRecord extends BaseRecord {
   };
   barcode?: string | null;
   labelTemplateId?: string | null;
-}
-
-export interface ProductBomItemRecord extends BaseRecord {
-  rowId?: string;
-  id?: string;
-  materialId: string;
-  materialType?: number;
-  quantity: number;
-  unit?: string | null;
-  lossRate?: number | null;
-  remark?: string | null;
-  sortOrder?: number | null;
-}
-
-export interface ProductBomRecord extends BaseRecord {
-  id?: string;
-  version?: string | null;
-  status?: number;
-  effectiveDate?: string | null;
-  items?: ProductBomItemRecord[];
 }
 
 export interface LabelTemplateRecord extends BaseRecord {
@@ -124,6 +105,7 @@ export interface ProductPayload extends BasePayload {
   images?: string[];
   specifications?: string;
   status?: number;
+  isSemifinished?: boolean;
   skus: ProductSkuRecord[];
 }
 
@@ -136,6 +118,7 @@ export interface ProductUpdatePayload extends BasePayload {
   images?: string[];
   specifications?: string;
   status?: number;
+  isSemifinished?: boolean;
   skus: ProductSkuRecord[];
 }
 

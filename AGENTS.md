@@ -41,7 +41,14 @@ Use TypeScript for frontend code, PascalCase for React components/pages, camelCa
 No comprehensive automated test suite is configured yet. Build the affected target and manually verify the changed workflow in the matching app. When adding tests, use colocated `*.test.ts`, `*.test.tsx`, or Java module tests under `src/test/java`.
 
 ## Database Migration Guidelines
-Liquibase uses `erp-admin/src/main/resources/db/changelog/db.changelog-master.yaml` to include table-level formatted SQL files under `db/changelog/tables`. Add each logical SQL statement as its own `--changeset`, and place it in the file for the affected table, such as `041_production_batch.sql`. Avoid editing changesets that have already been shared or executed.
+Liquibase uses `erp-admin/src/main/resources/db/changelog/db.changelog-master.yaml`, which auto-includes all formatted SQL files under `db/changelog/tables` via `includeAll` (sorted by filename). To add a migration:
+
+1. Create a new file in `db/changelog/tables`, named `NNN_description.sql` where `NNN` is the next zero-padded sequence number (e.g. `047_add_invoice_table.sql`). The sequence number controls execution order.
+2. Start the file with the formatted SQL header: `--liquibase formatted sql logicalFilePath:db/changelog/db.changelog-master.sql`.
+3. Add each logical SQL statement as its own `--changeset erp:<unique-id>`. The changeset id must be globally unique across all files.
+4. Avoid editing changesets that have already been shared or executed; write a new changeset to undo or alter them instead.
+
+You no longer need to edit `db.changelog-master.yaml` when adding SQL files — dropping the file into `tables/` is enough.
 
 ## Commit & Pull Request Guidelines
 Recent commits follow Conventional Commits, for example `feat(material): add Material and Supplier management modules`. Use concise imperative subjects, scoped by app or business domain when useful.

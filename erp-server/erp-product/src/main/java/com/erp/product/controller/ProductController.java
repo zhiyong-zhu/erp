@@ -44,8 +44,9 @@ public class ProductController {
                                      @RequestParam(defaultValue = "10") long pageSize,
                                      @RequestParam(required = false) String name,
                                      @RequestParam(required = false) UUID categoryId,
-                                     @RequestParam(required = false) Integer status) {
-        return R.ok(productService.list(pageNum, pageSize, name, categoryId, status));
+                                     @RequestParam(required = false) Integer status,
+                                     @RequestParam(required = false) Boolean isSemifinished) {
+        return R.ok(productService.list(pageNum, pageSize, name, categoryId, status, isSemifinished));
     }
 
     @GetMapping("/{id}")

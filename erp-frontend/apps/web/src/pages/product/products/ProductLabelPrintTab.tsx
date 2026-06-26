@@ -1,5 +1,5 @@
-import { ModalForm, ProFormDigit, ProFormSelect } from "@ant-design/pro-components";
 import { App, Button, Card, Descriptions, Empty, Space, Table, Tag, Typography } from "antd";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { fetchLabelTemplates, fetchProductPackages, previewLabelPrint } from "../../../api/product";
@@ -113,19 +113,26 @@ export function ProductLabelPrintTab({ product, height, canPrint }: {
         ) : null}
       </Card>
 
-      <ModalForm<{ skuId: string; packageLevel: number; labelTemplateId: string; quantity: number; printMode: string }>
+      <CreateForm
         title="标签预览"
         open={open}
+        width={560}
         initialValues={{ quantity: 1, printMode: "pdf" }}
-        modalProps={{ destroyOnClose: true, onCancel: () => setOpen(false) }}
+        onCancel={() => setOpen(false)}
         onFinish={handlePreview}
-      >
-        <ProFormSelect name="skuId" label="SKU" options={skuOptions} rules={[{ required: true }]} />
-        <ProFormSelect name="packageLevel" label="包装层级" options={packageOptions} rules={[{ required: true }]} />
-        <ProFormSelect name="labelTemplateId" label="标签模板" options={templateOptions} rules={[{ required: true }]} />
-        <ProFormDigit name="quantity" label="打印数量" min={1} fieldProps={{ precision: 0 }} rules={[{ required: true }]} />
-        <ProFormSelect name="printMode" label="打印模式" options={[{ label: "PDF预览", value: "pdf" }]} rules={[{ required: true }]} />
-      </ModalForm>
+        sections={[
+          {
+            title: "打印配置",
+            fields: [
+              { type: "select", name: "skuId", label: "SKU", options: skuOptions, rules: [{ required: true }], colSpan: 24 },
+              { type: "select", name: "packageLevel", label: "包装层级", options: packageOptions, rules: [{ required: true }], colSpan: 24 },
+              { type: "select", name: "labelTemplateId", label: "标签模板", options: templateOptions, rules: [{ required: true }], colSpan: 24 },
+              { type: "digit", name: "quantity", label: "打印数量", min: 1, precision: 0, rules: [{ required: true }], colSpan: 12 },
+              { type: "select", name: "printMode", label: "打印模式", options: [{ label: "PDF预览", value: "pdf" }], rules: [{ required: true }], colSpan: 12 }
+            ]
+          }
+        ]}
+      />
     </div>
   );
 }

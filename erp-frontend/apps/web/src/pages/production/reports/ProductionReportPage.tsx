@@ -1,7 +1,7 @@
 import { PlayCircleOutlined, ToolOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormList, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { App, Button, Descriptions, Divider, Drawer, Input, Modal, Space, Table, Tag, Typography } from "antd";
 import { PRODUCTION_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -692,30 +692,29 @@ function ReportForm({
   onFinish: (values: ProductionReportPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<ProductionReportPayload>
+    <CreateForm
       title={batch ? `批次 ${batch.batchNo} 报工` : "生产报工"}
       open={!!batch}
       width={760}
-      grid
-      rowProps={{ gutter: 16 }}
-      initialValues={{
-        batchId: batch?.id,
-        reportQuantity: 1,
-        goodQuantity: 1,
-        defectQuantity: 0
-      }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      initialValues={{ batchId: batch?.id, reportQuantity: 1, goodQuantity: 1, defectQuantity: 0 }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="batchId" label="批次ID" readonly colProps={{ span: 24 }} />
-      <ProFormText name="reportNo" label="报工单号" placeholder="留空自动生成" colProps={{ xs: 24, md: 12 }} />
-      <ProFormDigit name="reportQuantity" label="报工数量" min={0.0001} fieldProps={{ precision: 4 }} rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="goodQuantity" label="良品数量" min={0} fieldProps={{ precision: 4 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="defectQuantity" label="不良数量" min={0} fieldProps={{ precision: 4 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="reportAt" label="报工时间" placeholder="YYYY-MM-DD HH:mm:ss，留空为当前时间" colProps={{ xs: 24, md: 12 }} />
-      <ProFormText name="operatorName" label="操作人" colProps={{ xs: 24, md: 12 }} />
-      <ProFormTextArea name="remark" label="备注" colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "报工信息",
+          fields: [
+            { type: "text", name: "batchId", label: "批次ID", colSpan: 24, fieldProps: { readOnly: true } },
+            { type: "text", name: "reportNo", label: "报工单号", placeholder: "留空自动生成", colSpan: 12 },
+            { type: "digit", name: "reportQuantity", label: "报工数量", min: 0.0001, precision: 4, rules: [{ required: true }], colSpan: 8 },
+            { type: "digit", name: "goodQuantity", label: "良品数量", min: 0, precision: 4, colSpan: 8 },
+            { type: "digit", name: "defectQuantity", label: "不良数量", min: 0, precision: 4, colSpan: 8 },
+            { type: "text", name: "reportAt", label: "报工时间", placeholder: "YYYY-MM-DD HH:mm:ss，留空为当前时间", colSpan: 12 },
+            { type: "text", name: "operatorName", label: "操作人", colSpan: 12 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }
 
@@ -729,17 +728,23 @@ function SerialGenerateForm({
   onFinish: (values: SerialNumberGeneratePayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<SerialNumberGeneratePayload>
+    <CreateForm
       title={batch ? `批次 ${batch.batchNo} 生成批次/序列号` : "生成序列号"}
       open={!!batch}
       width={520}
       initialValues={{ quantity: batch?.plannedQuantity, prefix: batch?.batchNo }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormDigit name="quantity" label="生成数量" min={1} fieldProps={{ precision: 0 }} rules={[{ required: true }]} />
-      <ProFormText name="prefix" label="编码前缀" />
-    </ModalForm>
+      sections={[
+        {
+          title: "生成配置",
+          fields: [
+            { type: "digit", name: "quantity", label: "生成数量", min: 1, precision: 0, rules: [{ required: true }], colSpan: 24 },
+            { type: "text", name: "prefix", label: "编码前缀", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }
 
@@ -753,21 +758,25 @@ function PackForm({
   onFinish: (values: ProductionBoxPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<ProductionBoxPayload>
+    <CreateForm
       title={batch ? `批次 ${batch.batchNo} 装箱` : "装箱"}
       open={!!batch}
       width={720}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={{ batchId: batch?.id, quantity: batch?.completedQuantity ?? 1 }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="batchId" label="批次ID" readonly colProps={{ span: 24 }} />
-      <ProFormText name="packageId" label="包装规格ID" rules={[{ required: true }]} colProps={{ xs: 24, md: 12 }} />
-      <ProFormDigit name="quantity" label="装箱数量" min={0.0001} fieldProps={{ precision: 4 }} colProps={{ xs: 24, md: 12 }} />
-      <ProFormTextArea name="remark" label="备注" colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "装箱信息",
+          fields: [
+            { type: "text", name: "batchId", label: "批次ID", colSpan: 24, fieldProps: { readOnly: true } },
+            { type: "text", name: "packageId", label: "包装规格ID", rules: [{ required: true }], colSpan: 12 },
+            { type: "digit", name: "quantity", label: "装箱数量", min: 0.0001, precision: 4, colSpan: 12 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }
 

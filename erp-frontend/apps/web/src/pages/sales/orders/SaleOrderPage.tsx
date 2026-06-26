@@ -1,13 +1,7 @@
 import { CheckOutlined, EditOutlined, SendOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDigit,
-  ProFormList,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea
-} from "@ant-design/pro-components";
+import { ModalForm, ProFormDigit, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import { App, Button, Drawer, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";

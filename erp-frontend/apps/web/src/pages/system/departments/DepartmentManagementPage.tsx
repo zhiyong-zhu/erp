@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Space, Switch, Table, Typography } from "antd";
 import { SYSTEM_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { createDepartment, fetchDepartments, updateDepartment, updateDepartmentStatus } from "../../../api/system";
@@ -144,13 +144,26 @@ function DepartmentForm({ title, open, initialValues, departmentOptions, onCance
   onFinish: (values: DepartmentPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<DepartmentPayload> title={title} open={open} initialValues={initialValues} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
-      <ProFormSelect name="parentId" label="上级部门" options={departmentOptions} allowClear />
-      <ProFormText name="name" label="部门名称" rules={[{ required: true }]} />
-      <ProFormText name="code" label="部门编码" rules={[{ required: true }]} />
-      <ProFormText name="leader" label="负责人" />
-      <ProFormText name="phone" label="电话" />
-      <ProFormDigit name="sortOrder" label="排序" min={0} fieldProps={{ precision: 0 }} />
-    </ModalForm>
+    <CreateForm
+      title={title}
+      open={open}
+      width={720}
+      initialValues={initialValues}
+      onCancel={onCancel}
+      onFinish={onFinish}
+      sections={[
+        {
+          title: "部门信息",
+          fields: [
+            { type: "select", name: "parentId", label: "上级部门", options: departmentOptions, colSpan: 12, fieldProps: { allowClear: true } },
+            { type: "text", name: "name", label: "部门名称", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "code", label: "部门编码", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "leader", label: "负责人", colSpan: 12 },
+            { type: "text", name: "phone", label: "电话", colSpan: 12 },
+            { type: "digit", name: "sortOrder", label: "排序", min: 0, precision: 0, colSpan: 12 }
+          ]
+        }
+      ]}
+    />
   );
 }

@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Card, Empty, Flex, List, Space, Switch, Table, Tag, Typography } from "antd";
 import { SYSTEM_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -286,12 +286,25 @@ function DictTypeForm({ title, open, initialValues, onCancel, onFinish }: {
   onFinish: (values: DictTypePayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<DictTypePayload> title={title} open={open} initialValues={initialValues ?? { status: 1 }} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
-      <ProFormText name="name" label="字典名称" rules={[{ required: true }]} />
-      <ProFormText name="code" label="字典编码" rules={[{ required: true }]} />
-      <ProFormText name="description" label="描述" />
-      <ProFormSelect name="status" label="状态" options={statusOptions} rules={[{ required: true }]} />
-    </ModalForm>
+    <CreateForm
+      title={title}
+      open={open}
+      width={680}
+      initialValues={initialValues ?? { status: 1 }}
+      onCancel={onCancel}
+      onFinish={onFinish}
+      sections={[
+        {
+          title: "字典类型",
+          fields: [
+            { type: "text", name: "name", label: "字典名称", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "code", label: "字典编码", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "description", label: "描述", colSpan: 12 },
+            { type: "select", name: "status", label: "状态", options: statusOptions, rules: [{ required: true }], colSpan: 12 }
+          ]
+        }
+      ]}
+    />
   );
 }
 
@@ -303,12 +316,25 @@ function DictDataForm({ title, open, initialValues, onCancel, onFinish }: {
   onFinish: (values: DictDataPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<DictDataPayload> title={title} open={open} initialValues={initialValues ?? { sortOrder: 0, status: 1 }} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
-      <ProFormText name="label" label="字典标签" rules={[{ required: true }]} />
-      <ProFormText name="value" label="字典值" rules={[{ required: true }]} />
-      <ProFormDigit name="sortOrder" label="排序" min={0} fieldProps={{ precision: 0 }} />
-      <ProFormText name="cssClass" label="样式标识" />
-      <ProFormSelect name="status" label="状态" options={statusOptions} rules={[{ required: true }]} />
-    </ModalForm>
+    <CreateForm
+      title={title}
+      open={open}
+      width={680}
+      initialValues={initialValues ?? { sortOrder: 0, status: 1 }}
+      onCancel={onCancel}
+      onFinish={onFinish}
+      sections={[
+        {
+          title: "字典数据",
+          fields: [
+            { type: "text", name: "label", label: "字典标签", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "value", label: "字典值", rules: [{ required: true }], colSpan: 12 },
+            { type: "digit", name: "sortOrder", label: "排序", min: 0, precision: 0, colSpan: 12 },
+            { type: "text", name: "cssClass", label: "样式标识", colSpan: 12 },
+            { type: "select", name: "status", label: "状态", options: statusOptions, rules: [{ required: true }], colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }

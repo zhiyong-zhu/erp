@@ -11,6 +11,7 @@ public class ProductionBomItem {
     private UUID id;
     private UUID bomId;
     private UUID materialId;
+    private Integer itemType;
     private BigDecimal quantity;
     private String unit;
     private BigDecimal lossRate;
@@ -23,6 +24,8 @@ public class ProductionBomItem {
     public void setBomId(UUID bomId) { this.bomId = bomId; }
     public UUID getMaterialId() { return materialId; }
     public void setMaterialId(UUID materialId) { this.materialId = materialId; }
+    public Integer getItemType() { return itemType; }
+    public void setItemType(Integer itemType) { this.itemType = itemType; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public String getUnit() { return unit; }

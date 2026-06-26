@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
 import { PRODUCTION_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { createProductionProcess, fetchProductionProcesses, updateProductionProcess } from "../../../api/production";
@@ -172,31 +172,45 @@ function ProcessForm({
   onFinish: (values: ProductionProcessPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<ProductionProcessPayload>
+    <CreateForm
       title={title}
       open={open}
       width={960}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { version: "V1.0", status: 1, steps: [{ stepNo: 10, name: "下料" }] }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="code" label="工艺编码" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="name" label="工艺名称" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="productId" label="产品ID" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="version" label="版本" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect name="status" label="状态" options={[{ label: "启用", value: 1 }, { label: "停用", value: 0 }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormTextArea name="remark" label="备注" colProps={{ span: 24 }} />
-      <ProFormList name="steps" label="工序明细" creatorButtonProps={{ creatorButtonText: "添加工序" }}>
-        <ProFormDigit name="stepNo" label="工序号" min={1} fieldProps={{ precision: 0 }} rules={[{ required: true }]} />
-        <ProFormText name="name" label="工序名称" rules={[{ required: true }]} />
-        <ProFormText name="workstation" label="工位" />
-        <ProFormDigit name="standardMinutes" label="标准工时" min={0} fieldProps={{ precision: 2 }} />
-        <ProFormText name="qualityRequirement" label="质量要求" />
-        <ProFormText name="remark" label="备注" />
-      </ProFormList>
-    </ModalForm>
+      sections={[
+        {
+          title: "工艺信息",
+          fields: [
+            { type: "text", name: "code", label: "工艺编码", rules: [{ required: true }], colSpan: 8 },
+            { type: "text", name: "name", label: "工艺名称", rules: [{ required: true }], colSpan: 8 },
+            { type: "text", name: "productId", label: "产品ID", colSpan: 8 },
+            { type: "text", name: "version", label: "版本", rules: [{ required: true }], colSpan: 8 },
+            { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "停用", value: 0 }], colSpan: 8 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        },
+        {
+          title: "工序明细",
+          fields: [
+            {
+              type: "list",
+              name: "steps",
+              creatorButtonText: "添加工序",
+              rowFields: [
+                { type: "digit", name: "stepNo", label: "工序号", min: 1, precision: 0, rules: [{ required: true }], colSpan: 3 },
+                { type: "text", name: "name", label: "工序名称", rules: [{ required: true }], colSpan: 5 },
+                { type: "text", name: "workstation", label: "工位", colSpan: 4 },
+                { type: "digit", name: "standardMinutes", label: "标准工时", min: 0, precision: 2, colSpan: 4 },
+                { type: "text", name: "qualityRequirement", label: "质量要求", colSpan: 4 },
+                { type: "text", name: "remark", label: "备注", colSpan: 4 }
+              ]
+            }
+          ]
+        }
+      ]}
+    />
   );
 }
 

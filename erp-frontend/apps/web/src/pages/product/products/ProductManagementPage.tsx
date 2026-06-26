@@ -1,10 +1,21 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
-import { App, Button, Card, Descriptions, Empty, Input, Popconfirm, Space, Switch, Table, Tabs, Tag, Typography, Upload } from "antd";
-import { PRODUCT_PERMISSIONS } from "@erp/shared";
+import { App, Button, Card, Descriptions, Empty, Input, Space, Switch, Table, Tabs, Tag, Typography, Upload } from "antd";
+import { PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct, uploadProductImage } from "../../../api/product";
+import { changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct } from "../../../api/product";
+import { CreateForm } from "../../../components/CreateForm";
+import { ImageUploadField } from "../../../components/form/ImageUploadField";
+import { SpecificationEditor } from "../../../components/form/SpecificationEditor";
+import { SkuListField } from "../../../components/form/SkuListField";
+import {
+  buildSkuRowsFromSpecifications,
+  createRowId,
+  parseSpecifications,
+  serializeSpecifications,
+  type EditableSkuRow,
+  type EditableSpecificationRow
+} from "../../../components/form/types";
 import { ProductBomTab } from "./ProductBomTab";
 import { ProductPackageTab } from "./ProductPackageTab";
 import { ProductLabelTemplateTab } from "./ProductLabelTemplateTab";
@@ -19,18 +30,6 @@ const productStatusOptions = [
   { label: "在售", value: 1 },
   { label: "停用", value: 2 }
 ];
-
-const skuStatusOptions = [
-  { label: "启用", value: 1 },
-  { label: "禁用", value: 0 }
-];
-
-const productSpecificationsExample = '{"颜色":["银色","黑色"],"容量":["500ml"]}';
-const skuAttributesExample = '{"颜色":"银色","容量":"500ml"}';
-
-type EditableSkuRow = ProductSkuRecord & { rowId: string };
-type EditableSpecificationRow = { rowId: string; key: string; valuesText: string };
-type EditableAttributeRow = { rowId: string; key: string; value: string };
 
 function flattenCategories(categories: ProductCategoryRecord[]): ProductCategoryRecord[] {
   return categories.flatMap((category) => [category, ...flattenCategories(category.children ?? [])]);
@@ -60,8 +59,9 @@ export function ProductManagementPage() {
   const canUpdatePackages = hasPermission(PRODUCT_PERMISSIONS.PACKAGE_UPDATE);
   const canViewLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_LIST);
   const canUpdateLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_UPDATE);
-  const canViewBom = hasPermission(PRODUCT_PERMISSIONS.BOM_LIST);
-  const canUpdateBom = hasPermission(PRODUCT_PERMISSIONS.BOM_UPDATE);
+  const canViewBom = hasPermission(PRODUCTION_PERMISSIONS.BOM_LIST);
+  const canCreateBom = hasPermission(PRODUCTION_PERMISSIONS.BOM_CREATE);
+  const canUpdateBom = hasPermission(PRODUCTION_PERMISSIONS.BOM_UPDATE);
   const canPrintLabels = hasPermission(PRODUCT_PERMISSIONS.LABEL_PRINT);
 
   const categoryOptions = useMemo(
@@ -209,6 +209,13 @@ export function ProductManagementPage() {
       render: (_, record) => <Switch checked={record.status === 1} checkedChildren="在售" unCheckedChildren="停用" disabled={!canUpdate} onChange={(checked: boolean) => void handleToggleStatus(record, checked)} />
     },
     {
+      title: "半成品",
+      dataIndex: "isSemifinished",
+      key: "isSemifinished",
+      width: 80,
+      render: (value) => value ? <Tag color="orange">半成品</Tag> : <Tag>成品</Tag>
+    },
+    {
       title: "操作",
       key: "actions",
       render: (_, record) => (
@@ -222,14 +229,15 @@ export function ProductManagementPage() {
     }
   ];
 
-  const splitHeight = Math.max(viewportHeight - 260, 520);
-  const topPanelHeight = viewingProduct ? Math.max(Math.floor(splitHeight * 0.7), 320) : splitHeight;
-  const detailPanelHeight = viewingProduct ? Math.max(splitHeight - topPanelHeight, 180) : 0;
-  const listScrollY = Math.max(topPanelHeight - 170, 220);
-  const detailBodyHeight = Math.max(detailPanelHeight - 110, 120);
+  // 可用高度估算，用于列表表格 scroll.y 和详情内容区高度
+  const availableHeight = Math.max(viewportHeight - 200, 480);
+  // 未选产品时列表占满；选中后上下各占约一半
+  const halfHeight = Math.floor((availableHeight - 16) / 2);
+  const listScrollY = Math.max((viewingProduct ? halfHeight : availableHeight) - 110, 220);
+  const detailBodyHeight = Math.max(halfHeight - 90, 120);
 
   return (
-    <section>
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="page-header">
         <div>
           <Title level={3} style={{ margin: 0 }}>产品管理 / 产品列表</Title>
@@ -255,14 +263,15 @@ export function ProductManagementPage() {
         </Space>
       </div>
 
-      <div className="product-page-split" style={{ height: splitHeight }}>
-        <div className="product-page-panel" style={{ height: topPanelHeight }}>
-          <Card size="small" className="product-list-panel">
+      <div className="product-page-split">
+        <div className="product-page-panel" style={{ flex: viewingProduct ? "1 1 0" : "1 1 100%" }}>
+          <Card size="small" className="product-list-panel" styles={{ body: { padding: 0 } }}>
             <Table
               rowKey="id"
               columns={columns}
               dataSource={products}
               loading={loading}
+              size="small"
               onRow={(record) => ({
                 onClick: () => {
                   if (canViewDetail) {
@@ -285,7 +294,7 @@ export function ProductManagementPage() {
         </div>
 
         {viewingProduct ? (
-          <div className="product-page-panel" style={{ height: detailPanelHeight }}>
+          <div className="product-page-panel" style={{ flex: "1 1 0" }}>
             <ProductDetailPanel
               product={viewingProduct}
               activeTab={detailTab}
@@ -296,6 +305,7 @@ export function ProductManagementPage() {
               canViewLabels={canViewLabels}
               canUpdateLabels={canUpdateLabels}
               canViewBom={canViewBom}
+              canCreateBom={canCreateBom}
               canUpdateBom={canUpdateBom}
               canPrintLabels={canPrintLabels}
               onTabChange={setDetailTab}
@@ -327,6 +337,7 @@ export function ProductManagementPage() {
           images: editingProduct.images,
           specifications: editingProduct.specifications ?? "",
           status: editingProduct.status,
+          isSemifinished: editingProduct.isSemifinished ?? false,
           skus: editingProduct.skus?.map((sku) => ({
             rowId: createRowId(),
             skuCode: sku.skuCode,
@@ -346,7 +357,7 @@ export function ProductManagementPage() {
   );
 }
 
-function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, canUpdatePackages, canViewLabels, canUpdateLabels, canViewBom, canUpdateBom, canPrintLabels, detailBodyHeight, onTabChange }: {
+function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, canUpdatePackages, canViewLabels, canUpdateLabels, canViewBom, canCreateBom, canUpdateBom, canPrintLabels, detailBodyHeight, onTabChange }: {
   product: ProductRecord | null;
   activeTab: string;
   canViewCost: boolean;
@@ -356,6 +367,7 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
   canViewLabels: boolean;
   canUpdateLabels: boolean;
   canViewBom: boolean;
+  canCreateBom: boolean;
   canUpdateBom: boolean;
   canPrintLabels: boolean;
   onTabChange: (key: string) => void;
@@ -381,51 +393,50 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
       size="small"
       title={product ? `产品详情 · ${product.name}` : "产品详情"}
       className="product-detail-panel"
+      styles={{ body: { padding: "0 12px 12px", height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } }}
     >
       {product ? (
         <Tabs
           activeKey={activeTab}
           onChange={onTabChange}
+          className="product-detail-tabs"
           items={[
             {
               key: "base",
               label: "基础信息",
               children: (
-                <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}>
-                  <Descriptions column={2} bordered size="small">
-                    <Descriptions.Item label="产品编码">{product.code}</Descriptions.Item>
-                    <Descriptions.Item label="产品名称">{product.name}</Descriptions.Item>
-                    <Descriptions.Item label="分类">{product.categoryName ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="品牌">{product.brand ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="单位">{product.unit}</Descriptions.Item>
-                    <Descriptions.Item label="状态">
-                      <Tag color={product.status === 1 ? "success" : product.status === 2 ? "default" : "processing"}>
-                        {product.status === 1 ? "在售" : product.status === 2 ? "停用" : "草稿"}
-                      </Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="描述" span={2}>{product.description || "-"}</Descriptions.Item>
-                    <Descriptions.Item label="规格定义" span={2}>
-                      {product.specifications ? <code>{product.specifications}</code> : "-"}
-                    </Descriptions.Item>
-                  </Descriptions>
-                </div>
+                <Descriptions column={2} bordered size="small">
+                  <Descriptions.Item label="产品编码">{product.code}</Descriptions.Item>
+                  <Descriptions.Item label="产品名称">{product.name}</Descriptions.Item>
+                  <Descriptions.Item label="分类">{product.categoryName ?? "-"}</Descriptions.Item>
+                  <Descriptions.Item label="品牌">{product.brand ?? "-"}</Descriptions.Item>
+                  <Descriptions.Item label="单位">{product.unit}</Descriptions.Item>
+                  <Descriptions.Item label="状态">
+                    <Tag color={product.status === 1 ? "success" : product.status === 2 ? "default" : "processing"}>
+                      {product.status === 1 ? "在售" : product.status === 2 ? "停用" : "草稿"}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="描述" span={2}>{product.description || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="规格定义" span={2}>
+                    {product.specifications ? <code>{product.specifications}</code> : "-"}
+                  </Descriptions.Item>
+                </Descriptions>
               )
             },
             {
               key: "sku",
               label: `SKU列表 (${product.skus?.length ?? 0})`,
               children: product.skus && product.skus.length > 0 ? (
-                <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}>
-                  <Table
-                    rowKey={(record) => record.id ?? record.skuCode}
-                    columns={skuColumns}
-                    dataSource={product.skus}
-                    pagination={false}
-                    scroll={{ x: 860, y: Math.max(detailBodyHeight - 24, 100) }}
-                  />
-                </div>
+                <Table
+                  rowKey={(record) => record.id ?? record.skuCode}
+                  columns={skuColumns}
+                  dataSource={product.skus}
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 860 }}
+                />
               ) : (
-                <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="暂无SKU" /></div>
+                <Empty description="暂无SKU" />
               )
             },
             {
@@ -433,28 +444,28 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
               label: "包装规格",
               children: canViewPackages
                 ? <ProductPackageTab productId={product.id} canUpdatePackages={canUpdatePackages} height={detailBodyHeight} />
-                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无包装规格查看权限" /></div>
+                : <Empty description="无包装规格查看权限" />
             },
             {
               key: "bom",
               label: "BOM",
               children: canViewBom
-                ? <ProductBomTab productId={product.id} canUpdate={canUpdateBom} height={detailBodyHeight} />
-                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无BOM查看权限" /></div>
+                ? <ProductBomTab productId={product.id} productName={product.name} canCreate={canCreateBom} canUpdate={canUpdateBom} height={detailBodyHeight} />
+                : <Empty description="无BOM查看权限" />
             },
             {
               key: "label",
               label: "标签模板",
               children: canViewLabels
                 ? <ProductLabelTemplateTab height={detailBodyHeight} canUpdate={canUpdateLabels} />
-                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无标签模板查看权限" /></div>
+                : <Empty description="无标签模板查看权限" />
             },
             {
               key: "print",
               label: "标签打印",
               children: canPrintLabels
                 ? <ProductLabelPrintTab product={product} height={detailBodyHeight} canPrint={canPrintLabels} />
-                : <div className="product-detail-tab-scroll" style={{ height: detailBodyHeight }}><Empty description="无标签打印权限" /></div>
+                : <Empty description="无标签打印权限" />
             }
           ]}
         />
@@ -478,139 +489,22 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
   const { message } = App.useApp();
   const [skuRows, setSkuRows] = useState<EditableSkuRow[]>([]);
   const [specRows, setSpecRows] = useState<EditableSpecificationRow[]>([]);
-  const [skuModalOpen, setSkuModalOpen] = useState(false);
-  const [editingSkuRowId, setEditingSkuRowId] = useState<string | null>(null);
-  const [skuAttributeRows, setSkuAttributeRows] = useState<EditableAttributeRow[]>([]);
-  const [imageUploading, setImageUploading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) {
       setSkuRows([]);
       setSpecRows([]);
-      setSkuModalOpen(false);
-      setEditingSkuRowId(null);
-      setSkuAttributeRows([]);
       return;
     }
-
-    const nextRows = (initialValues?.skus as ProductSkuRecord[] | undefined)?.map((sku) => ({
+    const nextRows = (initialValues?.skus as EditableSkuRow[] | undefined)?.map((sku) => ({
       ...sku,
       rowId: sku.rowId ?? createRowId()
     })) ?? [];
     setSkuRows(nextRows);
     setSpecRows(parseSpecifications(initialValues?.specifications));
     setImageUrls((initialValues?.images as string[] | undefined) ?? []);
-  }, [initialValues?.skus, initialValues?.specifications, open]);
-
-  const editingSku = editingSkuRowId ? skuRows.find((row) => row.rowId === editingSkuRowId) ?? null : null;
-
-  const skuColumns: ColumnsType<EditableSkuRow> = [
-    { title: "SKU编码", dataIndex: "skuCode", key: "skuCode", width: 160 },
-    {
-      title: "属性",
-      dataIndex: "attributes",
-      key: "attributes",
-      render: (value) => <code>{value}</code>
-    },
-    { title: "条码", dataIndex: "barcode", key: "barcode", width: 140 },
-    { title: "售价", dataIndex: "price", key: "price", width: 90 },
-    ...(canViewCost ? [{ title: "成本价", dataIndex: "costPrice", key: "costPrice", width: 90 } as ColumnsType<EditableSkuRow>[number]] : []),
-    { title: "重量", dataIndex: "weight", key: "weight", width: 90 },
-    {
-      title: "状态",
-      dataIndex: "status",
-      key: "status",
-      width: 90,
-      render: (value) => <Tag color={value === 1 ? "success" : "default"}>{value === 1 ? "启用" : "禁用"}</Tag>
-    },
-    {
-      title: "操作",
-      key: "actions",
-      width: 140,
-      render: (_, record) => (
-        <Space size="small">
-          <Button type="link" onClick={() => openEditSku(record.rowId)}>编辑</Button>
-          <Button type="link" danger onClick={() => removeSku(record.rowId)}>删除</Button>
-        </Space>
-      )
-    }
-  ];
-
-  function openCreateSku() {
-    setEditingSkuRowId(null);
-    setSkuAttributeRows([createEmptyAttributeRow()]);
-    setSkuModalOpen(true);
-  }
-
-  function openEditSku(rowId: string) {
-    setEditingSkuRowId(rowId);
-    const row = skuRows.find((item) => item.rowId === rowId);
-    setSkuAttributeRows(parseAttributes(row?.attributes));
-    setSkuModalOpen(true);
-  }
-
-  function removeSku(rowId: string) {
-    setSkuRows((rows) => rows.filter((row) => row.rowId !== rowId));
-  }
-
-  async function handleSubmit(values: any) {
-    const normalizedSkus = skuRows
-      .filter((row) => row.skuCode && row.attributes)
-      .map(({ rowId, ...sku }) => sku);
-
-    if (normalizedSkus.length === 0) {
-      message.error("至少需要维护一个SKU");
-      return false;
-    }
-
-    const payload = {
-      ...values,
-      images: imageUrls,
-      specifications: serializeSpecifications(specRows),
-      skus: normalizedSkus
-    };
-    return onFinish(payload);
-  }
-
-  async function handleImageUpload(file: File) {
-    setImageUploading(true);
-    try {
-      const uploaded = await uploadProductImage(file);
-      setImageUrls((urls) => [...urls, uploaded.url]);
-      message.success("图片上传成功");
-    } catch (err: any) {
-      message.error(err?.response?.data?.message ?? err?.message ?? "图片上传失败");
-    } finally {
-      setImageUploading(false);
-    }
-    return false;
-  }
-
-  async function handleSaveSku(values: EditableSkuRow) {
-    const attributes = serializeAttributes(skuAttributeRows);
-    if (!attributes) {
-      message.error("至少需要维护一个SKU属性");
-      return false;
-    }
-
-    const nextRow: EditableSkuRow = {
-      ...values,
-      attributes,
-      rowId: editingSkuRowId ?? createRowId()
-    };
-
-    setSkuRows((rows) => {
-      if (editingSkuRowId) {
-        return rows.map((row) => (row.rowId === editingSkuRowId ? nextRow : row));
-      }
-      return [...rows, nextRow];
-    });
-    setSkuModalOpen(false);
-    setEditingSkuRowId(null);
-    setSkuAttributeRows([]);
-    return true;
-  }
+  }, [initialValues?.skus, initialValues?.specifications, initialValues?.images, open]);
 
   function handleGenerateSkus(mode: "append" | "replace") {
     const generatedRows = buildSkuRowsFromSpecifications(specRows);
@@ -618,13 +512,11 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
       message.warning("请先维护至少一组有效规格和值");
       return;
     }
-
     setSkuRows((rows) => {
       if (mode === "replace") {
         message.success(`已按当前规格重建 ${generatedRows.length} 条SKU候选`);
         return generatedRows;
       }
-
       const existingAttributes = new Set(rows.map((row) => row.attributes));
       const newRows = generatedRows.filter((row) => !existingAttributes.has(row.attributes));
       if (newRows.length === 0) {
@@ -636,339 +528,63 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
     });
   }
 
+  async function handleSubmit(values: any) {
+    const normalizedSkus = skuRows
+      .filter((row) => row.skuCode && row.attributes)
+      .map(({ rowId, ...sku }) => sku);
+    if (normalizedSkus.length === 0) {
+      message.error("至少需要维护一个SKU");
+      return false;
+    }
+    return onFinish({
+      ...values,
+      images: imageUrls,
+      specifications: serializeSpecifications(specRows),
+      skus: normalizedSkus
+    });
+  }
+
   return (
-    <>
-      <ModalForm<any>
-        title={title}
-        open={open}
-        width={960}
-        initialValues={initialValues ?? { status: 0 }}
-        modalProps={{ destroyOnClose: true, onCancel }}
-        onFinish={handleSubmit}
-      >
-        {!editing ? <ProFormText name="code" label="产品编码" rules={[{ required: true }]} /> : null}
-        <ProFormText name="name" label="产品名称" rules={[{ required: true }]} />
-        <ProFormSelect name="categoryId" label="产品分类" options={categoryOptions} />
-        <ProFormText name="brand" label="品牌" />
-        <ProFormText name="unit" label="单位" rules={[{ required: true }]} />
-        <Card
-          size="small"
-          title="产品图片"
-          className="product-spec-card"
-          extra={
-            <Upload beforeUpload={handleImageUpload} showUploadList={false} multiple>
-              <Button loading={imageUploading}>上传图片</Button>
-            </Upload>
-          }
-        >
-          {imageUrls.length > 0 ? (
-            <Space wrap>
-              {imageUrls.map((url) => (
-                <Tag key={url} closable onClose={() => setImageUrls((urls) => urls.filter((item) => item !== url))}>
-                  {url}
-                </Tag>
-              ))}
-            </Space>
-          ) : (
-            <Empty description="暂无图片" />
-          )}
-        </Card>
-        <ProFormTextArea name="description" label="描述" fieldProps={{ autoSize: { minRows: 3, maxRows: 5 } }} />
-
-        <Card
-          size="small"
-          title="规格定义"
-          className="product-spec-card"
-          extra={
-            <Space>
-              <Button icon={<PlusOutlined />} onClick={() => setSpecRows((rows) => [...rows, createEmptySpecificationRow()])}>新增规格</Button>
-              <Button onClick={() => handleGenerateSkus("append")}>补全SKU候选</Button>
-              <Popconfirm
-                title="重建SKU候选"
-                description="会按当前规格组合重建SKU列表，已手工维护的价格、条码、重量会被覆盖，确定继续吗？"
-                okText="重建"
-                cancelText="取消"
-                onConfirm={() => handleGenerateSkus("replace")}
-              >
-                <Button danger>重建SKU候选</Button>
-              </Popconfirm>
-            </Space>
-          }
-        >
-          <Text type="secondary" className="product-sku-hint">
-            结构化维护规格名称和可选值，提交时会自动转换为 JSON。示例：<code>{productSpecificationsExample}</code>
-          </Text>
-          {specRows.length === 0 ? (
-            <div className="product-spec-empty">暂无规格定义，可按需新增。</div>
-          ) : (
-            specRows.map((row) => (
-              <div key={row.rowId} className="product-spec-row">
-                <Input
-                  value={row.key}
-                  placeholder="规格名称，如 颜色"
-                  onChange={(event) => updateSpecificationRow(row.rowId, "key", event.target.value, setSpecRows)}
-                />
-                <Input
-                  value={row.valuesText}
-                  placeholder="可选值，用逗号分隔，如 银色, 黑色"
-                  onChange={(event) => updateSpecificationRow(row.rowId, "valuesText", event.target.value, setSpecRows)}
-                />
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => setSpecRows((rows) => rows.filter((item) => item.rowId !== row.rowId))}
-                />
-              </div>
-            ))
-          )}
-        </Card>
-
-        <ProFormSelect name="status" label="状态" options={productStatusOptions} />
-
-        <div className="product-sku-section">
-          <Text type="secondary" className="product-sku-hint">
-            SKU 独立表维护。点击新增/编辑在弹窗中处理单条 SKU，避免多条时页面错乱。
-          </Text>
-        </div>
-        <Card
-          size="small"
-          title="SKU表"
-          className="product-sku-card"
-          extra={<Button type="primary" onClick={openCreateSku}>新增SKU</Button>}
-        >
-          <Table
-            rowKey="rowId"
-            columns={skuColumns}
-            dataSource={skuRows}
-            pagination={false}
-            locale={{ emptyText: "暂无SKU，请新增" }}
-            scroll={{ x: 1000 }}
-          />
-        </Card>
-      </ModalForm>
-
-      <ModalForm<EditableSkuRow>
-        title={editingSku ? "编辑SKU" : "新增SKU"}
-        open={skuModalOpen}
-        initialValues={editingSku ?? createEmptySkuRow()}
-        modalProps={{
-          destroyOnClose: true,
-          onCancel: () => {
-            setSkuModalOpen(false);
-            setEditingSkuRowId(null);
-            setSkuAttributeRows([]);
-          }
-        }}
-        onFinish={handleSaveSku}
-      >
-        <ProFormText name="skuCode" label="SKU编码" rules={[{ required: true }]} />
-        <ProFormText name="barcode" label="条码" />
-
-        <Card
-          size="small"
-          title="SKU属性"
-          className="product-spec-card"
-          extra={<Button icon={<PlusOutlined />} onClick={() => setSkuAttributeRows((rows) => [...rows, createEmptyAttributeRow()])}>新增属性</Button>}
-        >
-          <Text type="secondary" className="product-sku-hint">
-            使用键值对维护 SKU 属性，提交时会自动转换为 JSON。示例：<code>{skuAttributesExample}</code>
-          </Text>
-          {skuAttributeRows.map((row) => (
-            <div key={row.rowId} className="product-spec-row">
-              <Input
-                value={row.key}
-                placeholder="属性名，如 颜色"
-                onChange={(event) => updateAttributeRow(row.rowId, "key", event.target.value, setSkuAttributeRows)}
+    <CreateForm
+      title={title}
+      open={open}
+      width={1080}
+      initialValues={initialValues ?? { status: 0, isSemifinished: false }}
+      onCancel={onCancel}
+      onFinish={handleSubmit}
+      sections={[
+        {
+          title: "基本信息",
+          fields: [
+            ...(editing ? [] : [{ type: "text" as const, name: "code", label: "产品编码", rules: [{ required: true }], colSpan: 12 }]),
+            { type: "text", name: "name", label: "产品名称", rules: [{ required: true }], colSpan: 12 },
+            { type: "select", name: "categoryId", label: "产品分类", options: categoryOptions, colSpan: 12 },
+            { type: "text", name: "brand", label: "品牌", colSpan: 12 },
+            { type: "text", name: "unit", label: "单位", rules: [{ required: true }], colSpan: 12 },
+            { type: "select", name: "status", label: "状态", options: productStatusOptions, colSpan: 12 },
+            { type: "switch", name: "isSemifinished", label: "是否半成品", defaultChecked: false, colSpan: 12 },
+            { type: "textarea", name: "description", label: "描述", colSpan: 24 }
+          ]
+        },
+        {
+          title: "产品资料",
+          slot: (
+            <>
+              <ImageUploadField value={imageUrls} onChange={setImageUrls} />
+              <SpecificationEditor
+                value={specRows}
+                onChange={setSpecRows}
+                onAppendSkus={() => handleGenerateSkus("append")}
+                onRebuildSkus={() => handleGenerateSkus("replace")}
               />
-              <Input
-                value={row.value}
-                placeholder="属性值，如 银色"
-                onChange={(event) => updateAttributeRow(row.rowId, "value", event.target.value, setSkuAttributeRows)}
-              />
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => setSkuAttributeRows((rows) => rows.length > 1 ? rows.filter((item) => item.rowId !== row.rowId) : [createEmptyAttributeRow()])}
-              />
-            </div>
-          ))}
-        </Card>
-
-        <ProFormDigit name="price" label="售价" min={0} fieldProps={{ precision: 2 }} />
-        {canViewCost ? <ProFormDigit name="costPrice" label="成本价" min={0} fieldProps={{ precision: 2 }} /> : null}
-        <ProFormDigit name="weight" label="重量" min={0} fieldProps={{ precision: 3 }} />
-        <ProFormSelect name="status" label="状态" options={skuStatusOptions} />
-      </ModalForm>
-    </>
+            </>
+          )
+        },
+        {
+          title: "SKU 列表",
+          slot: <SkuListField value={skuRows} onChange={setSkuRows} canViewCost={canViewCost} />
+        }
+      ]}
+    />
   );
-}
-
-function createRowId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `row-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function createEmptySkuRow(): EditableSkuRow {
-  return {
-    rowId: createRowId(),
-    skuCode: "",
-    attributes: "{}",
-    barcode: "",
-    price: undefined,
-    costPrice: undefined,
-    weight: undefined,
-    status: 1
-  };
-}
-
-function createEmptySpecificationRow(): EditableSpecificationRow {
-  return {
-    rowId: createRowId(),
-    key: "",
-    valuesText: ""
-  };
-}
-
-function createEmptyAttributeRow(): EditableAttributeRow {
-  return {
-    rowId: createRowId(),
-    key: "",
-    value: ""
-  };
-}
-
-function parseSpecifications(raw?: string | null): EditableSpecificationRow[] {
-  if (!raw) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return Object.entries(parsed).map(([key, value]) => ({
-      rowId: createRowId(),
-      key,
-      valuesText: Array.isArray(value) ? value.join(", ") : ""
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function serializeSpecifications(rows: EditableSpecificationRow[]): string | undefined {
-  const result: Record<string, string[]> = {};
-  for (const row of rows) {
-    const key = row.key.trim();
-    if (!key) {
-      continue;
-    }
-    const values = row.valuesText
-      .split(/[,，]/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-    if (values.length > 0) {
-      result[key] = values;
-    }
-  }
-  return Object.keys(result).length > 0 ? JSON.stringify(result) : undefined;
-}
-
-function parseAttributes(raw?: string | null): EditableAttributeRow[] {
-  if (!raw) {
-    return [createEmptyAttributeRow()];
-  }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const rows = Object.entries(parsed).map(([key, value]) => ({
-      rowId: createRowId(),
-      key,
-      value: value == null ? "" : String(value)
-    }));
-    return rows.length > 0 ? rows : [createEmptyAttributeRow()];
-  } catch {
-    return [createEmptyAttributeRow()];
-  }
-}
-
-function serializeAttributes(rows: EditableAttributeRow[]): string | null {
-  const result: Record<string, string> = {};
-  for (const row of rows) {
-    const key = row.key.trim();
-    const value = row.value.trim();
-    if (!key || !value) {
-      continue;
-    }
-    result[key] = value;
-  }
-  return Object.keys(result).length > 0 ? JSON.stringify(result) : null;
-}
-
-function buildSkuRowsFromSpecifications(rows: EditableSpecificationRow[]): EditableSkuRow[] {
-  const normalizedSpecs = rows
-    .map((row) => ({
-      key: row.key.trim(),
-      values: row.valuesText
-        .split(/[,，]/)
-        .map((value) => value.trim())
-        .filter(Boolean)
-    }))
-    .filter((row) => row.key && row.values.length > 0);
-
-  if (normalizedSpecs.length === 0) {
-    return [];
-  }
-
-  const combinations = buildAttributeCombinations(normalizedSpecs);
-  return combinations.map((attributes) => {
-    const serialized = JSON.stringify(attributes);
-    return {
-      rowId: createRowId(),
-      skuCode: buildGeneratedSkuCode(attributes),
-      attributes: serialized,
-      barcode: "",
-      price: undefined,
-      costPrice: undefined,
-      weight: undefined,
-      status: 1
-    };
-  });
-}
-
-function buildAttributeCombinations(specs: Array<{ key: string; values: string[] }>) {
-  let results: Array<Record<string, string>> = [{}];
-  for (const spec of specs) {
-    const nextResults: Array<Record<string, string>> = [];
-    for (const result of results) {
-      for (const value of spec.values) {
-        nextResults.push({ ...result, [spec.key]: value });
-      }
-    }
-    results = nextResults;
-  }
-  return results;
-}
-
-function buildGeneratedSkuCode(attributes: Record<string, string>) {
-  const suffix = Object.values(attributes)
-    .map((value) => value.replace(/\s+/g, "").slice(0, 4).toUpperCase())
-    .join("-");
-  return suffix ? `AUTO-${suffix}` : `AUTO-${Date.now()}`;
-}
-
-function updateSpecificationRow(
-  rowId: string,
-  field: keyof Omit<EditableSpecificationRow, "rowId">,
-  value: string,
-  setRows: React.Dispatch<React.SetStateAction<EditableSpecificationRow[]>>
-) {
-  setRows((rows) => rows.map((row) => (row.rowId === rowId ? { ...row, [field]: value } : row)));
-}
-
-function updateAttributeRow(
-  rowId: string,
-  field: keyof Omit<EditableAttributeRow, "rowId">,
-  value: string,
-  setRows: React.Dispatch<React.SetStateAction<EditableAttributeRow[]>>
-) {
-  setRows((rows) => rows.map((row) => (row.rowId === rowId ? { ...row, [field]: value } : row)));
 }

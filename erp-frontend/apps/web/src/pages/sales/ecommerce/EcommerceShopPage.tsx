@@ -1,6 +1,6 @@
 import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import { Alert, App, Button, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
@@ -135,27 +135,34 @@ export function EcommerceShopPage() {
         }}
       />
 
-      <ModalForm
+      <CreateForm
         title="添加电商平台店铺"
         open={createOpen}
         width={600}
-        modalProps={{ destroyOnClose: true, onCancel: () => setCreateOpen(false) }}
+        onCancel={() => setCreateOpen(false)}
         onFinish={handleCreate}
-      >
-        <ProFormSelect
-          name="platform" label="平台" rules={[{ required: true }]}
-          options={[
-            { label: "1688 (阿里巴巴)", value: "ALIBABA_1688" },
-            { label: "淘宝/天猫", value: "TAOBAO" },
-            { label: "京东", value: "JD" },
-            { label: "拼多多", value: "PDD" },
-            { label: "抖音", value: "DOUYIN" }
-          ]}
-        />
-        <ProFormText name="shopName" label="店铺名称" rules={[{ required: true, message: "请输入店铺名称" }]} />
-        <ProFormText name="shopIdOnPlatform" label="平台店铺ID" rules={[{ required: true, message: "请输入平台店铺ID" }]} />
-        <ProFormText name="accessToken" label="Access Token" />
-      </ModalForm>
+        sections={[
+          {
+            title: "店铺信息",
+            fields: [
+              {
+                type: "select", name: "platform", label: "平台", rules: [{ required: true }],
+                options: [
+                  { label: "1688 (阿里巴巴)", value: "ALIBABA_1688" },
+                  { label: "淘宝/天猫", value: "TAOBAO" },
+                  { label: "京东", value: "JD" },
+                  { label: "拼多多", value: "PDD" },
+                  { label: "抖音", value: "DOUYIN" }
+                ],
+                colSpan: 24
+              },
+              { type: "text", name: "shopName", label: "店铺名称", rules: [{ required: true, message: "请输入店铺名称" }], colSpan: 24 },
+              { type: "text", name: "shopIdOnPlatform", label: "平台店铺ID", rules: [{ required: true, message: "请输入平台店铺ID" }], colSpan: 24 },
+              { type: "text", name: "accessToken", label: "Access Token", colSpan: 24 }
+            ]
+          }
+        ]}
+      />
     </section>
   );
 }

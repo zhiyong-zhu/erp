@@ -1,12 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDigit,
-  ProFormSelect,
-  ProFormText
-} from "@ant-design/pro-components";
 import { App, Button, Switch, Table, Typography } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -173,50 +168,25 @@ function CategoryForm({
   onFinish: (values: MaterialCategoryPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<MaterialCategoryPayload>
+    <CreateForm
       title={title}
       open={open}
       width={880}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { status: 1, sortOrder: 0 }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormSelect
-        name="parentId"
-        label="上级分类"
-        options={categoryOptions}
-        allowClear
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormText
-        name="name"
-        label="分类名称"
-        rules={[{ required: true, message: "请输入分类名称" }]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormText
-        name="code"
-        label="分类编码"
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormDigit
-        name="sortOrder"
-        label="排序"
-        min={0}
-        fieldProps={{ precision: 0 }}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormSelect
-        name="status"
-        label="状态"
-        options={[
-          { label: "启用", value: 1 },
-          { label: "禁用", value: 0 }
-        ]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-    </ModalForm>
+      sections={[
+        {
+          title: "分类信息",
+          fields: [
+            { type: "select", name: "parentId", label: "上级分类", options: categoryOptions, colSpan: 8, fieldProps: { allowClear: true } },
+            { type: "text", name: "name", label: "分类名称", rules: [{ required: true, message: "请输入分类名称" }], colSpan: 8 },
+            { type: "text", name: "code", label: "分类编码", colSpan: 8 },
+            { type: "digit", name: "sortOrder", label: "排序", min: 0, precision: 0, colSpan: 8 },
+            { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 8 }
+          ]
+        }
+      ]}
+    />
   );
 }

@@ -1,7 +1,7 @@
 import { EditOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Input, Space, Table, Tabs, Tag, Typography } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { exportInventoryBalances, fetchInventoryBalances } from "../../../api/inventory";
@@ -326,18 +326,24 @@ export function MaterialInventoryPage() {
         ]}
       />
 
-      <ModalForm<Pick<MaterialPayload, "currentStock">>
+      <CreateForm
         title="调整库存"
         open={!!editingMaterial}
         width={640}
         initialValues={{ currentStock: editingMaterial?.currentStock ?? 0 }}
-        modalProps={{ destroyOnClose: true, onCancel: () => setEditingMaterial(null) }}
+        onCancel={() => setEditingMaterial(null)}
         onFinish={handleUpdateInventory}
-      >
-        <ProFormText name="codePreview" label="原料编码" initialValue={editingMaterial?.code} readonly />
-        <ProFormText name="namePreview" label="原料名称" initialValue={editingMaterial?.name} readonly />
-        <ProFormDigit name="currentStock" label="当前库存" min={0} fieldProps={{ precision: 2 }} rules={[{ required: true }]} />
-      </ModalForm>
+        sections={[
+          {
+            title: "库存调整",
+            fields: [
+              { type: "text", name: "codePreview", label: "原料编码", colSpan: 12, fieldProps: { readOnly: true, value: editingMaterial?.code } },
+              { type: "text", name: "namePreview", label: "原料名称", colSpan: 12, fieldProps: { readOnly: true, value: editingMaterial?.name } },
+              { type: "digit", name: "currentStock", label: "当前库存", min: 0, precision: 2, rules: [{ required: true }], colSpan: 24 }
+            ]
+          }
+        ]}
+      />
     </section>
   );
 }

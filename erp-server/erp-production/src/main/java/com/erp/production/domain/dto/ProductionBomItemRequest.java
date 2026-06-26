@@ -9,6 +9,7 @@ public class ProductionBomItemRequest {
     private UUID id;
     @NotNull
     private UUID materialId;
+    private Integer itemType;
     @NotNull
     @DecimalMin("0.0001")
     private BigDecimal quantity;
@@ -21,6 +22,8 @@ public class ProductionBomItemRequest {
     public void setId(UUID id) { this.id = id; }
     public UUID getMaterialId() { return materialId; }
     public void setMaterialId(UUID materialId) { this.materialId = materialId; }
+    public Integer getItemType() { return itemType; }
+    public void setItemType(Integer itemType) { this.itemType = itemType; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public String getUnit() { return unit; }

@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
 import { PRODUCTION_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { createSerialNumber, fetchSerialNumbers, updateSerialNumber } from "../../../api/production";
@@ -158,24 +158,28 @@ function SerialForm({
   onFinish: (values: SerialNumberPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<SerialNumberPayload>
+    <CreateForm
       title={title}
       open={open}
       width={820}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { status: "GENERATED" }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="serialNo" label="序列号" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="productId" label="产品ID" rules={[{ required: true }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="batchId" label="批次ID" colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect name="status" label="状态" options={serialStatusOptions} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="producedAt" label="生产时间" placeholder="YYYY-MM-DD HH:mm:ss" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="shippedAt" label="发货时间" placeholder="YYYY-MM-DD HH:mm:ss" colProps={{ xs: 24, md: 8 }} />
-      <ProFormTextArea name="remark" label="备注" colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "序列号信息",
+          fields: [
+            { type: "text", name: "serialNo", label: "序列号", rules: [{ required: true }], colSpan: 8 },
+            { type: "text", name: "productId", label: "产品ID", rules: [{ required: true }], colSpan: 8 },
+            { type: "text", name: "batchId", label: "批次ID", colSpan: 8 },
+            { type: "select", name: "status", label: "状态", options: serialStatusOptions, colSpan: 8 },
+            { type: "text", name: "producedAt", label: "生产时间", placeholder: "YYYY-MM-DD HH:mm:ss", colSpan: 8 },
+            { type: "text", name: "shippedAt", label: "发货时间", placeholder: "YYYY-MM-DD HH:mm:ss", colSpan: 8 },
+            { type: "textarea", name: "remark", label: "备注", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }
 

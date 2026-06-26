@@ -25,7 +25,6 @@ import { SupplierManagementPage } from "../pages/material/suppliers/SupplierMana
 import { ProductCategoryPage } from "../pages/product/categories/ProductCategoryPage";
 import { ProductManagementPage } from "../pages/product/products/ProductManagementPage";
 import { ProductionBatchPage } from "../pages/production/batches/ProductionBatchPage";
-import { ProductionBomPage } from "../pages/production/boms/ProductionBomPage";
 import { ProductionProcessPage } from "../pages/production/processes/ProductionProcessPage";
 import { ProductionReportPage } from "../pages/production/reports/ProductionReportPage";
 import { SerialNumberPage } from "../pages/production/serials/SerialNumberPage";
@@ -75,9 +74,6 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(PRODUCTION_PERMISSIONS.PROCESS_LIST)) {
     return "/production/processes";
-  }
-  if (permissions.includes(PRODUCTION_PERMISSIONS.BOM_LIST)) {
-    return "/production/boms";
   }
   if (permissions.includes(PRODUCTION_PERMISSIONS.BATCH_LIST)) {
     return "/production/batches";
@@ -204,7 +200,6 @@ export function AppRouter() {
             <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
             <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />
             <Route path="/production/processes" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.PROCESS_LIST}><ProductionProcessPage /></PermissionGuard>} />
-            <Route path="/production/boms" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.BOM_LIST}><ProductionBomPage /></PermissionGuard>} />
             <Route path="/production/batches" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.BATCH_LIST}><ProductionBatchPage /></PermissionGuard>} />
             <Route path="/production/reports" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.REPORT_LIST}><ProductionReportPage /></PermissionGuard>} />
             <Route path="/production/serials" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCTION_PERMISSIONS.SERIAL_LIST}><SerialNumberPage /></PermissionGuard>} />

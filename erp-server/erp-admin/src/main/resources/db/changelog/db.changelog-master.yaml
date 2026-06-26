@@ -1,0 +1,7 @@
+databaseChangeLog:
+  # 自动包含 db/changelog/tables 下全部 .sql 文件，按文件名字典序执行。
+  # 文件命名约定：NNN_描述.sql（NNN 为零填充三位序号，如 047_xxx.sql），
+  # 新增迁移脚本时放到 tables/ 目录即可，无需再手动维护本文件。
+  - includeAll:
+      path: tables/
+      relativeToChangelogFile: true

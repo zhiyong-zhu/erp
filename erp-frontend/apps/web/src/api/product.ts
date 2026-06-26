@@ -4,7 +4,6 @@ import type {
   LabelPrintPayload,
   LabelPrintResult,
   LabelTemplateRecord,
-  ProductBomRecord,
   ProductCategoryPayload,
   ProductCategoryRecord,
   ProductPackageRecord,
@@ -36,7 +35,7 @@ export async function updateProductCategory(id: string, payload: ProductCategory
   return response.data.data;
 }
 
-export async function fetchProducts(query: PageQuery & { name?: string; categoryId?: string; status?: number }): Promise<PageResult<ProductRecord>> {
+export async function fetchProducts(query: PageQuery & { name?: string; categoryId?: string; status?: number; isSemifinished?: boolean }): Promise<PageResult<ProductRecord>> {
   const response = await http.get<ApiResponse<PageResult<ProductRecord>>>("/product/products", { params: query });
   return response.data.data;
 }
@@ -104,16 +103,6 @@ export async function fetchLabelTemplates(): Promise<LabelTemplateRecord[]> {
 
 export async function saveLabelTemplate(payload: LabelTemplateRecord): Promise<LabelTemplateRecord> {
   const response = await http.post<ApiResponse<LabelTemplateRecord>>("/product/label-templates", payload);
-  return response.data.data;
-}
-
-export async function fetchProductBom(productId: string): Promise<ProductBomRecord> {
-  const response = await http.get<ApiResponse<ProductBomRecord>>(`/product/products/${productId}/bom`);
-  return response.data.data;
-}
-
-export async function saveProductBom(productId: string, payload: ProductBomRecord): Promise<ProductBomRecord> {
-  const response = await http.post<ApiResponse<ProductBomRecord>>(`/product/products/${productId}/bom`, payload);
   return response.data.data;
 }
 

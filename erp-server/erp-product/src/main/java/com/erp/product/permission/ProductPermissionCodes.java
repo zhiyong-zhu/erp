@@ -19,8 +19,6 @@ public final class ProductPermissionCodes {
     public static final String LABEL_LIST = "product:label:list";
     public static final String LABEL_UPDATE = "product:label:update";
     public static final String LABEL_PRINT = "product:label:print";
-    public static final String BOM_LIST = "product:bom:list";
-    public static final String BOM_UPDATE = "product:bom:update";
 
     private ProductPermissionCodes() {
     }

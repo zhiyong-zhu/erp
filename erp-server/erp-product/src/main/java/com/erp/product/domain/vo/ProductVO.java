@@ -18,6 +18,7 @@ public class ProductVO extends BaseVO {
     private List<String> images = new ArrayList<>();
     private String specifications;
     private Integer status;
+    private Boolean isSemifinished;
     private String statusName;
     private Integer skuCount;
     private List<ProductSkuVO> skus = new ArrayList<>();
@@ -108,6 +109,14 @@ public class ProductVO extends BaseVO {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Boolean getIsSemifinished() {
+        return isSemifinished;
+    }
+
+    public void setIsSemifinished(Boolean isSemifinished) {
+        this.isSemifinished = isSemifinished;
     }
 
     public String getStatusName() {

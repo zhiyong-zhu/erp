@@ -1,6 +1,6 @@
-import { ModalForm, ProFormTextArea } from "@ant-design/pro-components";
 import { App, Button, Table, Tag, Typography } from "antd";
 import { PURCHASE_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { fetchPurchaseExceptions, handlePurchaseException } from "../../../api/purchase";
@@ -105,21 +105,22 @@ export function PurchaseExceptionPage() {
         }}
       />
 
-      <ModalForm<PurchaseExceptionHandlePayload>
+      <CreateForm
         title="处理采购异常"
         open={!!handlingRecord}
         width={720}
         initialValues={{ action: "resolve", resolution: handlingRecord?.resolution ?? "" }}
-        modalProps={{ destroyOnClose: true, onCancel: () => setHandlingRecord(null) }}
+        onCancel={() => setHandlingRecord(null)}
         onFinish={handleSubmit}
-      >
-        <ProFormTextArea
-          name="resolution"
-          label="处理说明"
-          fieldProps={{ autoSize: { minRows: 3, maxRows: 5 } }}
-          rules={[{ required: true, message: "请输入处理说明" }]}
-        />
-      </ModalForm>
+        sections={[
+          {
+            title: "处理说明",
+            fields: [
+              { type: "textarea", name: "resolution", label: "处理说明", autoSize: { minRows: 3, maxRows: 5 }, rules: [{ required: true, message: "请输入处理说明" }], colSpan: 24 }
+            ]
+          }
+        ]}
+      />
     </section>
   );
 }

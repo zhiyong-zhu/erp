@@ -1,7 +1,7 @@
 import { EditOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Input, Table, Tag, Typography } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMaterials, fetchSuppliers, updateMaterial } from "../../../api/material";
@@ -134,7 +134,7 @@ export function MaterialSafetyStockPage() {
         }}
       />
 
-      <ModalForm<Pick<MaterialPayload, "safetyStock" | "leadTimeDays" | "defaultSupplierId">>
+      <CreateForm
         title="安全库存设置"
         open={!!editingMaterial}
         width={720}
@@ -143,15 +143,21 @@ export function MaterialSafetyStockPage() {
           leadTimeDays: editingMaterial?.leadTimeDays ?? undefined,
           defaultSupplierId: editingMaterial?.defaultSupplierId ?? undefined
         }}
-        modalProps={{ destroyOnClose: true, onCancel: () => setEditingMaterial(null) }}
+        onCancel={() => setEditingMaterial(null)}
         onFinish={handleUpdateSafetyStock}
-      >
-        <ProFormText name="codePreview" label="原料编码" initialValue={editingMaterial?.code} readonly />
-        <ProFormText name="namePreview" label="原料名称" initialValue={editingMaterial?.name} readonly />
-        <ProFormDigit name="safetyStock" label="安全库存" min={0} fieldProps={{ precision: 2 }} rules={[{ required: true }]} />
-        <ProFormDigit name="leadTimeDays" label="采购周期(天)" min={0} fieldProps={{ precision: 0 }} />
-        <ProFormSelect name="defaultSupplierId" label="默认供应商" options={supplierOptions} allowClear />
-      </ModalForm>
+        sections={[
+          {
+            title: "安全库存",
+            fields: [
+              { type: "text", name: "codePreview", label: "原料编码", colSpan: 12, fieldProps: { readOnly: true, value: editingMaterial?.code } },
+              { type: "text", name: "namePreview", label: "原料名称", colSpan: 12, fieldProps: { readOnly: true, value: editingMaterial?.name } },
+              { type: "digit", name: "safetyStock", label: "安全库存", min: 0, precision: 2, rules: [{ required: true }], colSpan: 8 },
+              { type: "digit", name: "leadTimeDays", label: "采购周期(天)", min: 0, precision: 0, colSpan: 8 },
+              { type: "select", name: "defaultSupplierId", label: "默认供应商", options: supplierOptions, colSpan: 8, fieldProps: { allowClear: true } }
+            ]
+          }
+        ]}
+      />
     </section>
   );
 }

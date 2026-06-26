@@ -6,6 +6,7 @@ import java.util.UUID;
 public class ProductionBomItemVO {
     private UUID id;
     private UUID materialId;
+    private Integer itemType;
     private String materialCode;
     private String materialName;
     private BigDecimal quantity;
@@ -18,6 +19,8 @@ public class ProductionBomItemVO {
     public void setId(UUID id) { this.id = id; }
     public UUID getMaterialId() { return materialId; }
     public void setMaterialId(UUID materialId) { this.materialId = materialId; }
+    public Integer getItemType() { return itemType; }
+    public void setItemType(Integer itemType) { this.itemType = itemType; }
     public String getMaterialCode() { return materialCode; }
     public void setMaterialCode(String materialCode) { this.materialCode = materialCode; }
     public String getMaterialName() { return materialName; }

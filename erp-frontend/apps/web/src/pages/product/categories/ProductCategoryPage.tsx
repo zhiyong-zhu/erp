@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Switch, Table, Typography } from "antd";
 import { PRODUCT_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { createProductCategory, fetchProductCategoryTree, updateProductCategory } from "../../../api/product";
@@ -129,12 +129,25 @@ function CategoryForm({ title, open, initialValues, categoryOptions, onCancel, o
   onFinish: (values: ProductCategoryPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<ProductCategoryPayload> title={title} open={open} initialValues={initialValues ?? { status: 1, sortOrder: 0 }} modalProps={{ destroyOnClose: true, onCancel }} onFinish={onFinish}>
-      <ProFormSelect name="parentId" label="上级分类" options={categoryOptions} allowClear />
-      <ProFormText name="name" label="分类名称" rules={[{ required: true }]} />
-      <ProFormText name="code" label="分类编码" />
-      <ProFormDigit name="sortOrder" label="排序" min={0} fieldProps={{ precision: 0 }} />
-      <ProFormSelect name="status" label="状态" options={[{ label: "启用", value: 1 }, { label: "禁用", value: 0 }]} />
-    </ModalForm>
+    <CreateForm
+      title={title}
+      open={open}
+      width={680}
+      initialValues={initialValues ?? { status: 1, sortOrder: 0 }}
+      onCancel={onCancel}
+      onFinish={onFinish}
+      sections={[
+        {
+          title: "分类信息",
+          fields: [
+            { type: "select", name: "parentId", label: "上级分类", options: categoryOptions, colSpan: 12, fieldProps: { allowClear: true } },
+            { type: "text", name: "name", label: "分类名称", rules: [{ required: true }], colSpan: 12 },
+            { type: "text", name: "code", label: "分类编码", colSpan: 12 },
+            { type: "digit", name: "sortOrder", label: "排序", min: 0, precision: 0, colSpan: 6 },
+            { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 6 }
+          ]
+        }
+      ]}
+    />
   );
 }

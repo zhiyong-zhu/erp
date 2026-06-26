@@ -24,6 +24,7 @@ public class Product extends BaseEntity {
     @TableField(typeHandler = JsonbStringTypeHandler.class)
     private String specifications;
     private Integer status;
+    private Boolean isSemifinished;
     private Boolean deleted;
     private OffsetDateTime deletedAt;
 
@@ -105,6 +106,14 @@ public class Product extends BaseEntity {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Boolean getIsSemifinished() {
+        return isSemifinished;
+    }
+
+    public void setIsSemifinished(Boolean isSemifinished) {
+        this.isSemifinished = isSemifinished;
     }
 
     public Boolean getDeleted() {

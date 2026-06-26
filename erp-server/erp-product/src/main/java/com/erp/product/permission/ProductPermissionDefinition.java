@@ -20,9 +20,7 @@ public enum ProductPermissionDefinition implements PermissionDefinition {
     PACKAGE_UPDATE(ProductPermissionCodes.PACKAGE_UPDATE, "维护包装规格", 3, null, null, 131, PACKAGE_LIST.code, true),
     LABEL_LIST(ProductPermissionCodes.LABEL_LIST, "标签模板", 2, null, null, 140, PRODUCT_ROOT.code, true),
     LABEL_UPDATE(ProductPermissionCodes.LABEL_UPDATE, "维护标签模板", 3, null, null, 141, LABEL_LIST.code, true),
-    LABEL_PRINT(ProductPermissionCodes.LABEL_PRINT, "标签打印", 3, null, null, 142, LABEL_LIST.code, true),
-    BOM_LIST(ProductPermissionCodes.BOM_LIST, "BOM", 2, null, null, 150, PRODUCT_ROOT.code, true),
-    BOM_UPDATE(ProductPermissionCodes.BOM_UPDATE, "维护BOM", 3, null, null, 151, BOM_LIST.code, true);
+    LABEL_PRINT(ProductPermissionCodes.LABEL_PRINT, "标签打印", 3, null, null, 142, LABEL_LIST.code, true);
 
     private final String code;
     private final String name;

@@ -67,7 +67,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public PageVO<ProductVO> list(long pageNum, long pageSize, String name, UUID categoryId, Integer status) {
+    public PageVO<ProductVO> list(long pageNum, long pageSize, String name, UUID categoryId, Integer status, Boolean isSemifinished) {
         Page<Product> page = productMapper.selectPage(
                 new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<Product>()
@@ -75,6 +75,7 @@ public class ProductServiceImpl implements ProductService {
                         .like(name != null && !name.isBlank(), Product::getName, name)
                         .eq(categoryId != null, Product::getCategoryId, categoryId)
                         .eq(status != null, Product::getStatus, status)
+                        .eq(isSemifinished != null, Product::getIsSemifinished, isSemifinished)
                         .orderByDesc(Product::getCreatedAt));
         List<ProductVO> records = page.getRecords().stream().map(this::toProductVOWithoutSkus).collect(Collectors.toList());
         return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
@@ -101,6 +102,7 @@ public class ProductServiceImpl implements ProductService {
         product.setImages(normalizeImages(request.getImages()));
         product.setSpecifications(normalizeOptionalJson(request.getSpecifications(), "规格定义"));
         product.setStatus(request.getStatus() == null ? 0 : request.getStatus());
+        product.setIsSemifinished(Boolean.TRUE.equals(request.getIsSemifinished()));
         product.setCreatedBy(SecurityUtils.getUserId());
         product.setCreatedAt(OffsetDateTime.now());
         product.setUpdatedBy(SecurityUtils.getUserId());
@@ -125,6 +127,7 @@ public class ProductServiceImpl implements ProductService {
         updateEntity.setImages(normalizeImages(request.getImages()));
         updateEntity.setSpecifications(normalizeOptionalJson(request.getSpecifications(), "规格定义"));
         updateEntity.setStatus(request.getStatus() == null ? product.getStatus() : request.getStatus());
+        updateEntity.setIsSemifinished(request.getIsSemifinished() == null ? product.getIsSemifinished() : request.getIsSemifinished());
         updateEntity.setUpdatedBy(SecurityUtils.getUserId());
         updateEntity.setUpdatedAt(OffsetDateTime.now());
         productMapper.updateById(updateEntity);
@@ -137,6 +140,7 @@ public class ProductServiceImpl implements ProductService {
         product.setImages(updateEntity.getImages());
         product.setSpecifications(updateEntity.getSpecifications());
         product.setStatus(updateEntity.getStatus());
+        product.setIsSemifinished(updateEntity.getIsSemifinished());
         product.setUpdatedBy(updateEntity.getUpdatedBy());
         product.setUpdatedAt(updateEntity.getUpdatedAt());
         replaceSkus(id, request.getSkus());
@@ -369,6 +373,7 @@ public class ProductServiceImpl implements ProductService {
         vo.setImages(product.getImages() == null ? new ArrayList<>() : java.util.Arrays.asList(product.getImages()));
         vo.setSpecifications(product.getSpecifications());
         vo.setStatus(product.getStatus());
+        vo.setIsSemifinished(product.getIsSemifinished());
         List<ProductSku> skus = productSkuMapper.selectByProductId(product.getId());
         vo.setSkuCount(skus.size());
         if (includeSkus) {

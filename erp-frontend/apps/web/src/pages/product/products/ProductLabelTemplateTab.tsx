@@ -1,6 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { App, Button, Card, Empty, Space, Table, Tag, Typography } from "antd";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { fetchLabelTemplates, saveLabelTemplate } from "../../../api/product";
@@ -100,9 +100,10 @@ export function ProductLabelTemplateTab({ height, canUpdate }: { height: number;
         />
       </Card>
 
-      <ModalForm<LabelTemplateRecord>
+      <CreateForm
         title={editingTemplate ? "编辑标签模板" : "新增标签模板"}
         open={open}
+        width={720}
         initialValues={editingTemplate ? {
           ...editingTemplate,
           templateConfigDraft: editingTemplate.templateConfig
@@ -112,22 +113,22 @@ export function ProductLabelTemplateTab({ height, canUpdate }: { height: number;
           status: 1,
           templateConfigDraft: "{\"elements\":[]}"
         }}
-        modalProps={{ destroyOnClose: true, onCancel: () => { setOpen(false); setEditingTemplate(null); } }}
+        onCancel={() => { setOpen(false); setEditingTemplate(null); }}
         onFinish={handleSave}
-      >
-        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} />
-        <ProFormDigit name="widthMm" label="宽度(mm)" min={1} fieldProps={{ precision: 1 }} rules={[{ required: true }]} />
-        <ProFormDigit name="heightMm" label="高度(mm)" min={1} fieldProps={{ precision: 1 }} rules={[{ required: true }]} />
-        <ProFormSelect name="status" label="状态" options={[{ label: "启用", value: 1 }, { label: "禁用", value: 0 }]} />
-        <ProFormTextArea
-          name="templateConfigDraft"
-          label="模板配置(JSON字符串)"
-          fieldProps={{ autoSize: { minRows: 3, maxRows: 8 } }}
-          extra={<span>示例：<code>{"{\"elements\":[]}"}</code></span>}
-          rules={[{ required: true }]}
-        />
-        <ProFormText name="previewImage" label="预览图地址" />
-      </ModalForm>
+        sections={[
+          {
+            title: "模板信息",
+            fields: [
+              { type: "text", name: "name", label: "模板名称", rules: [{ required: true }], colSpan: 24 },
+              { type: "digit", name: "widthMm", label: "宽度(mm)", min: 1, precision: 1, rules: [{ required: true }], colSpan: 8 },
+              { type: "digit", name: "heightMm", label: "高度(mm)", min: 1, precision: 1, rules: [{ required: true }], colSpan: 8 },
+              { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 8 },
+              { type: "textarea", name: "templateConfigDraft", label: "模板配置(JSON字符串)", autoSize: { minRows: 3, maxRows: 8 }, rules: [{ required: true }], colSpan: 24 },
+              { type: "text", name: "previewImage", label: "预览图地址", colSpan: 24 }
+            ]
+          }
+        ]}
+      />
     </div>
   );
 }

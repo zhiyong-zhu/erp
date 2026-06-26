@@ -37,6 +37,7 @@ export interface ProductionBomItemRecord {
   id?: string;
   rowId?: string;
   materialId: string;
+  itemType?: number;
   materialCode?: string | null;
   materialName?: string | null;
   quantity: number;

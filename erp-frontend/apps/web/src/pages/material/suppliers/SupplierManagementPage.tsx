@@ -1,13 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDigit,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea
-} from "@ant-design/pro-components";
 import { App, Button, Input, Space, Table, Typography } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -188,36 +182,37 @@ function SupplierForm({
   onFinish: (values: SupplierPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<SupplierPayload>
+    <CreateForm
       title={title}
       open={open}
       width={980}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { status: 1 }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="code" label="供应商编码" rules={[{ required: true, message: "请输入供应商编码" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="name" label="供应商名称" rules={[{ required: true, message: "请输入供应商名称" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="shortName" label="简称" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="contactPerson" label="联系人" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="phone" label="电话" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="email" label="邮箱" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="bankName" label="开户行" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="bankAccount" label="银行账号" colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="taxNumber" label="税号" colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="creditRating" label="信用评级" min={1} max={5} fieldProps={{ precision: 0 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect
-        name="status"
-        label="状态"
-        options={[
-          { label: "启用", value: 1 },
-          { label: "禁用", value: 0 }
-        ]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormTextArea name="address" label="地址" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "基本信息",
+          fields: [
+            { type: "text", name: "code", label: "供应商编码", rules: [{ required: true, message: "请输入供应商编码" }], colSpan: 8 },
+            { type: "text", name: "name", label: "供应商名称", rules: [{ required: true, message: "请输入供应商名称" }], colSpan: 8 },
+            { type: "text", name: "shortName", label: "简称", colSpan: 8 },
+            { type: "text", name: "contactPerson", label: "联系人", colSpan: 8 },
+            { type: "text", name: "phone", label: "电话", colSpan: 8 },
+            { type: "text", name: "email", label: "邮箱", colSpan: 8 },
+            { type: "digit", name: "creditRating", label: "信用评级", min: 1, precision: 0, fieldProps: { max: 5 }, colSpan: 8 },
+            { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 8 }
+          ]
+        },
+        {
+          title: "银行与税务",
+          fields: [
+            { type: "text", name: "bankName", label: "开户行", colSpan: 8 },
+            { type: "text", name: "bankAccount", label: "银行账号", colSpan: 8 },
+            { type: "text", name: "taxNumber", label: "税号", colSpan: 8 },
+            { type: "textarea", name: "address", label: "地址", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }

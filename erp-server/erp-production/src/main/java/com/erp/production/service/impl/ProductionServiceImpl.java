@@ -615,13 +615,22 @@ public class ProductionServiceImpl implements ProductionService {
             return;
         }
         for (ProductionBomItemRequest request : itemRequests) {
-            Material material = ensureMaterialExists(request.getMaterialId());
+            int itemType = request.getItemType() == null || request.getItemType() == 1 ? 1 : 2;
+            String defaultUnit;
+            if (itemType == 2) {
+                Product product = ensureProductExists(request.getMaterialId());
+                defaultUnit = product.getUnit();
+            } else {
+                Material material = ensureMaterialExists(request.getMaterialId());
+                defaultUnit = material.getUnit();
+            }
             ProductionBomItem item = new ProductionBomItem();
             item.setId(request.getId() == null ? UUID.randomUUID() : request.getId());
             item.setBomId(bomId);
             item.setMaterialId(request.getMaterialId());
+            item.setItemType(itemType);
             item.setQuantity(request.getQuantity());
-            item.setUnit(hasText(request.getUnit()) ? request.getUnit() : material.getUnit());
+            item.setUnit(hasText(request.getUnit()) ? request.getUnit() : defaultUnit);
             item.setLossRate(request.getLossRate() == null ? BigDecimal.ZERO : request.getLossRate());
             item.setProcessStepNo(request.getProcessStepNo());
             item.setRemark(request.getRemark());
@@ -663,10 +672,15 @@ public class ProductionServiceImpl implements ProductionService {
         if (items == null || items.isEmpty()) {
             throw new BizException(10004, "BOM must contain at least one item");
         }
-        Set<UUID> materialIds = new HashSet<>();
+        Set<String> seenKeys = new HashSet<>();
         for (ProductionBomItemRequest item : items) {
-            ensureMaterialExists(item.getMaterialId());
-            if (!materialIds.add(item.getMaterialId())) {
+            int itemType = item.getItemType() == null || item.getItemType() == 1 ? 1 : 2;
+            if (itemType == 2) {
+                ensureProductExists(item.getMaterialId());
+            } else {
+                ensureMaterialExists(item.getMaterialId());
+            }
+            if (!seenKeys.add(itemType + ":" + item.getMaterialId())) {
                 throw new BizException(10004, "BOM contains duplicated materials");
             }
         }
@@ -801,10 +815,20 @@ public class ProductionServiceImpl implements ProductionService {
         ProductionBomItemVO vo = new ProductionBomItemVO();
         vo.setId(item.getId());
         vo.setMaterialId(item.getMaterialId());
-        Material material = materialMapper.selectById(item.getMaterialId());
-        if (material != null) {
-            vo.setMaterialCode(material.getCode());
-            vo.setMaterialName(material.getName());
+        int itemType = item.getItemType() == null || item.getItemType() == 1 ? 1 : 2;
+        vo.setItemType(itemType);
+        if (itemType == 2) {
+            Product product = productMapper.selectById(item.getMaterialId());
+            if (product != null) {
+                vo.setMaterialCode(product.getCode());
+                vo.setMaterialName(product.getName());
+            }
+        } else {
+            Material material = materialMapper.selectById(item.getMaterialId());
+            if (material != null) {
+                vo.setMaterialCode(material.getCode());
+                vo.setMaterialName(material.getName());
+            }
         }
         vo.setQuantity(item.getQuantity());
         vo.setUnit(item.getUnit());

@@ -93,9 +93,6 @@ export function AppLayout() {
           hasPermission(PRODUCTION_PERMISSIONS.PROCESS_LIST)
             ? { key: "/production/processes", icon: <ProfileOutlined />, label: "工艺路线", onClick: () => navigate("/production/processes") }
             : null,
-          hasPermission(PRODUCTION_PERMISSIONS.BOM_LIST)
-            ? { key: "/production/boms", icon: <ProfileOutlined />, label: "生产BOM", onClick: () => navigate("/production/boms") }
-            : null,
           hasPermission(PRODUCTION_PERMISSIONS.BATCH_LIST)
             ? { key: "/production/batches", icon: <ApartmentOutlined />, label: "生产工单", onClick: () => navigate("/production/batches") }
             : null,
@@ -230,8 +227,6 @@ export function AppLayout() {
     selectedKeys = ["/product/products"];
   } else if (location.pathname.startsWith("/production/processes")) {
     selectedKeys = ["/production/processes"];
-  } else if (location.pathname.startsWith("/production/boms")) {
-    selectedKeys = ["/production/boms"];
   } else if (location.pathname.startsWith("/production/batches")) {
     selectedKeys = ["/production/batches"];
   } else if (location.pathname.startsWith("/production/reports")) {

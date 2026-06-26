@@ -1,15 +1,9 @@
 import { PlusOutlined } from "@ant-design/icons";
-import {
-  ModalForm,
-  ProFormDigit,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea
-} from "@ant-design/pro-components";
 import { App, Button, Input, Space, Table, Typography, Upload } from "antd";
 import { MATERIAL_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
+import { CreateForm } from "../../../components/CreateForm";
 import {
   createMaterial,
   exportMaterialsFile,
@@ -268,34 +262,44 @@ function MaterialForm({
   onFinish: (values: MaterialPayload) => Promise<boolean>;
 }) {
   return (
-    <ModalForm<MaterialPayload>
+    <CreateForm
       title={title}
       open={open}
       width={980}
-      grid
-      rowProps={{ gutter: 16 }}
       initialValues={initialValues ?? { status: 1 }}
-      modalProps={{ destroyOnClose: true, onCancel }}
+      onCancel={onCancel}
       onFinish={onFinish}
-    >
-      <ProFormText name="code" label="原料编码" rules={[{ required: true, message: "请输入原料编码" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="name" label="原料名称" rules={[{ required: true, message: "请输入原料名称" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect name="categoryId" label="原料分类" options={categoryOptions} colProps={{ xs: 24, md: 8 }} />
-      <ProFormText name="unit" label="单位" rules={[{ required: true, message: "请输入单位" }]} colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect name="defaultSupplierId" label="默认供应商" options={supplierOptions} allowClear colProps={{ xs: 24, md: 8 }} />
-      <ProFormSelect
-        name="status"
-        label="状态"
-        options={[
-          { label: "启用", value: 1 },
-          { label: "禁用", value: 0 }
-        ]}
-        colProps={{ xs: 24, md: 8 }}
-      />
-      <ProFormDigit name="safetyStock" label="安全库存" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="currentStock" label="当前库存" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormDigit name="leadTimeDays" label="采购周期(天)" min={0} fieldProps={{ precision: 0 }} colProps={{ xs: 24, md: 8 }} />
-      <ProFormTextArea name="specifications" label="规格描述" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />
-    </ModalForm>
+      sections={[
+        {
+          title: "基本信息",
+          fields: [
+            { type: "text", name: "code", label: "原料编码", rules: [{ required: true, message: "请输入原料编码" }], colSpan: 8 },
+            { type: "text", name: "name", label: "原料名称", rules: [{ required: true, message: "请输入原料名称" }], colSpan: 8 },
+            { type: "select", name: "categoryId", label: "原料分类", options: categoryOptions, colSpan: 8 },
+            { type: "text", name: "unit", label: "单位", rules: [{ required: true, message: "请输入单位" }], colSpan: 8 },
+            { type: "select", name: "defaultSupplierId", label: "默认供应商", options: supplierOptions, colSpan: 8, fieldProps: { allowClear: true } },
+            {
+              type: "select",
+              name: "status",
+              label: "状态",
+              options: [
+                { label: "启用", value: 1 },
+                { label: "禁用", value: 0 }
+              ],
+              colSpan: 8
+            }
+          ]
+        },
+        {
+          title: "库存与采购",
+          fields: [
+            { type: "digit", name: "safetyStock", label: "安全库存", min: 0, precision: 2, colSpan: 8 },
+            { type: "digit", name: "currentStock", label: "当前库存", min: 0, precision: 2, colSpan: 8 },
+            { type: "digit", name: "leadTimeDays", label: "采购周期(天)", min: 0, precision: 0, colSpan: 8 },
+            { type: "textarea", name: "specifications", label: "规格描述", colSpan: 24 }
+          ]
+        }
+      ]}
+    />
   );
 }

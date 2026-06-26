@@ -7,7 +7,7 @@ public enum ProductionPermissionDefinition implements PermissionDefinition {
     PROCESS_LIST(ProductionPermissionCodes.PROCESS_LIST, "工艺路线", 2, "/production/processes", "branches", 510, ROOT.code, true),
     PROCESS_CREATE(ProductionPermissionCodes.PROCESS_CREATE, "新建工艺路线", 3, null, null, 511, PROCESS_LIST.code, true),
     PROCESS_UPDATE(ProductionPermissionCodes.PROCESS_UPDATE, "编辑工艺路线", 3, null, null, 512, PROCESS_LIST.code, true),
-    BOM_LIST(ProductionPermissionCodes.BOM_LIST, "生产BOM", 2, "/production/boms", "profile", 520, ROOT.code, true),
+    BOM_LIST(ProductionPermissionCodes.BOM_LIST, "生产BOM", 2, "/product/products", "profile", 520, ROOT.code, true),
     BOM_CREATE(ProductionPermissionCodes.BOM_CREATE, "新建生产BOM", 3, null, null, 521, BOM_LIST.code, true),
     BOM_UPDATE(ProductionPermissionCodes.BOM_UPDATE, "编辑生产BOM", 3, null, null, 522, BOM_LIST.code, true),
     BATCH_LIST(ProductionPermissionCodes.BATCH_LIST, "生产工单", 2, "/production/batches", "schedule", 530, ROOT.code, true),

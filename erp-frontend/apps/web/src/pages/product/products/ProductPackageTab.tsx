@@ -1,6 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormSelect, ProFormText } from "@ant-design/pro-components";
 import { App, Button, Card, Empty, Space, Table, Tag, Typography } from "antd";
+import { CreateForm } from "../../../components/CreateForm";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { fetchLabelTemplates, fetchProductPackages, saveProductPackages } from "../../../api/product";
@@ -157,9 +157,10 @@ export function ProductPackageTab({ productId, canUpdatePackages, height }: {
         />
       </Card>
 
-      <ModalForm<ProductPackageRecord>
+      <CreateForm
         title={editingPackage ? "编辑包装规格" : "新增包装规格"}
         open={open}
+        width={720}
         initialValues={editingPackage ? {
           ...editingPackage,
           dimensionsDraft: parseDimensions(editingPackage.dimensions)
@@ -168,34 +169,31 @@ export function ProductPackageTab({ productId, canUpdatePackages, height }: {
           quantity: 1,
           dimensionsDraft: { unit: "cm" }
         }}
-        modalProps={{ destroyOnClose: true, onCancel: () => { setOpen(false); setEditingPackage(null); } }}
+        onCancel={() => { setOpen(false); setEditingPackage(null); }}
         onFinish={handleSave}
-      >
-        <ProFormSelect
-          name="level"
-          label="包装层级"
-          options={levelOptions}
-          rules={[{ required: true }]}
-        />
-        <ProFormText name="name" label="包装名称" rules={[{ required: true }]} />
-        <ProFormDigit name="quantity" label="装入数量" min={1} fieldProps={{ precision: 0 }} rules={[{ required: true }]} />
-        <ProFormDigit name="weight" label="重量" min={0} fieldProps={{ precision: 3 }} />
-        <ProFormText name="barcode" label="条码" />
-        <ProFormSelect
-          name="labelTemplateId"
-          label="关联标签模板"
-          options={labelTemplates.map((template) => ({ label: template.name, value: template.id! }))}
-          allowClear
-        />
-        <ProFormDigit name={["dimensionsDraft", "length"]} label="长度" min={0} fieldProps={{ precision: 1 }} />
-        <ProFormDigit name={["dimensionsDraft", "width"]} label="宽度" min={0} fieldProps={{ precision: 1 }} />
-        <ProFormDigit name={["dimensionsDraft", "height"]} label="高度" min={0} fieldProps={{ precision: 1 }} />
-        <ProFormSelect
-          name={["dimensionsDraft", "unit"]}
-          label="尺寸单位"
-          options={[{ label: "cm", value: "cm" }, { label: "mm", value: "mm" }]}
-        />
-      </ModalForm>
+        sections={[
+          {
+            title: "包装规格",
+            fields: [
+              { type: "select", name: "level", label: "包装层级", options: levelOptions, rules: [{ required: true }], colSpan: 12 },
+              { type: "text", name: "name", label: "包装名称", rules: [{ required: true }], colSpan: 12 },
+              { type: "digit", name: "quantity", label: "装入数量", min: 1, precision: 0, rules: [{ required: true }], colSpan: 12 },
+              { type: "digit", name: "weight", label: "重量", min: 0, precision: 3, colSpan: 12 },
+              { type: "text", name: "barcode", label: "条码", colSpan: 12 },
+              { type: "select", name: "labelTemplateId", label: "关联标签模板", options: labelTemplates.map((template) => ({ label: template.name, value: template.id! })), colSpan: 12, fieldProps: { allowClear: true } }
+            ]
+          },
+          {
+            title: "尺寸",
+            fields: [
+              { type: "digit", name: ["dimensionsDraft", "length"], label: "长度", min: 0, precision: 1, colSpan: 6 },
+              { type: "digit", name: ["dimensionsDraft", "width"], label: "宽度", min: 0, precision: 1, colSpan: 6 },
+              { type: "digit", name: ["dimensionsDraft", "height"], label: "高度", min: 0, precision: 1, colSpan: 6 },
+              { type: "select", name: ["dimensionsDraft", "unit"], label: "尺寸单位", options: [{ label: "cm", value: "cm" }, { label: "mm", value: "mm" }], colSpan: 6 }
+            ]
+          }
+        ]}
+      />
     </div>
   );
 }

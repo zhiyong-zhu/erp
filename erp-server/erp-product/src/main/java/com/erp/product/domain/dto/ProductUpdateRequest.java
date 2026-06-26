@@ -18,6 +18,7 @@ public class ProductUpdateRequest extends BaseDTO {
     private List<String> images;
     private String specifications;
     private Integer status;
+    private Boolean isSemifinished;
     @Valid
     @NotNull(message = "SKU列表不能为空")
     private List<ProductSkuRequest> skus;
@@ -84,6 +85,14 @@ public class ProductUpdateRequest extends BaseDTO {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Boolean getIsSemifinished() {
+        return isSemifinished;
+    }
+
+    public void setIsSemifinished(Boolean isSemifinished) {
+        this.isSemifinished = isSemifinished;
     }
 
     public List<ProductSkuRequest> getSkus() {

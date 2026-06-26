@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface ProductService {
-    PageVO<ProductVO> list(long pageNum, long pageSize, String name, UUID categoryId, Integer status);
+    PageVO<ProductVO> list(long pageNum, long pageSize, String name, UUID categoryId, Integer status, Boolean isSemifinished);
     ProductVO detail(UUID id);
     ProductVO create(ProductCreateRequest request);
     ProductVO update(UUID id, ProductUpdateRequest request);

@@ -86,6 +86,9 @@ body {
   min-height: 0;
   overflow: auto;
   padding: 24px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .login-shell {
@@ -152,6 +155,72 @@ body {
   display: inline-block;
 }
 
+/* 弹窗内分组卡片统一样式 */
+.form-section-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+}
+
+.form-section-card:last-child {
+  margin-bottom: 0;
+}
+
+.form-section-card > .ant-card-head {
+  min-height: 40px;
+  padding: 0 16px;
+}
+
+.form-section-card > .ant-card-head .ant-card-head-title {
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 合并卡片内的子分区：轻量分隔，避免再开 Card 造成割裂 */
+.form-subsection {
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.form-subsection:first-child {
+  padding-top: 0;
+}
+
+.form-subsection:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.form-subsection-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* BOM 物料明细行：紧凑、操作区右侧对齐 */
+.bom-item-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 12px 12px 0;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.bom-item-row > .ant-form-item:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.bom-item-row > .ant-pro-form-list-action {
+  flex-shrink: 0;
+  padding-bottom: 8px;
+}
+
 .product-sku-card {
   margin-bottom: 16px;
   border-radius: 16px;
@@ -179,27 +248,68 @@ body {
 
 .product-detail-panel {
   height: 100%;
-  border-radius: 18px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.product-detail-panel > .ant-card-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.product-detail-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-detail-tabs > .ant-tabs-nav {
+  margin-bottom: 0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+}
+
+.product-detail-tabs > .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 4px 4px 0;
+}
+
+.product-detail-tabs .ant-tabs-tabpane {
+  overflow: visible;
 }
 
 .product-list-panel {
   height: 100%;
-  border-radius: 18px;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .product-page-split {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .product-page-panel {
   min-height: 0;
 }
 
-.product-detail-tab-scroll {
-  overflow: auto;
-  padding-right: 4px;
+/* 紧凑表格：更小字号与行高，尽量在一屏显示更多数据 */
+.product-list-panel .ant-table-thead > tr > th,
+.product-list-panel .ant-table-tbody > tr > td {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.product-list-panel .ant-table-tbody > tr {
+  cursor: pointer;
 }
 
 .erp-table-row-active > td {
