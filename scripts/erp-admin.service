@@ -7,7 +7,7 @@ Wants=postgresql.service redis-server.service
 Type=simple
 User=root
 WorkingDirectory=/opt/erp/backend
-ExecStart=/usr/bin/java -Djava.io.tmpdir=/opt/erp/tmp -Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar erp-admin-1.0.0-SNAPSHOT.jar
+ExecStart=/bin/bash -lc 'LOG_FILE=/opt/erp/logs/erp-admin-$(date +%%Y%%m%%d-%%H%%M%%S).log; ln -sfn "$LOG_FILE" /opt/erp/logs/erp-admin-latest.log; exec /usr/bin/java -Djava.io.tmpdir=/opt/erp/tmp -Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar erp-admin-1.0.0-SNAPSHOT.jar >> "$LOG_FILE" 2>&1'
 Restart=on-failure
 RestartSec=10
 SuccessExitStatus=143

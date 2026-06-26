@@ -138,6 +138,9 @@ if [ -f "$SCRIPT_DIR/erp-admin.service" ]; then
 else
     err "未找到 $SCRIPT_DIR/erp-admin.service"
 fi
+if [ -f "$SCRIPT_DIR/wlog" ]; then
+    install -m 0755 "$SCRIPT_DIR/wlog" /usr/local/bin/wlog
+fi
 systemctl daemon-reload
 systemctl enable erp-admin
 

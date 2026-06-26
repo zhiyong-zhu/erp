@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+LOG_DIR="${ERP_LOG_DIR:-/opt/erp/logs}"
+LATEST_LINK="${LOG_DIR}/erp-admin-latest.log"
+
+if [ -L "$LATEST_LINK" ] || [ -f "$LATEST_LINK" ]; then
+    echo "$LATEST_LINK"
+    exec tail -f "$LATEST_LINK"
+fi
+
+latest_file=$(find "$LOG_DIR" -maxdepth 1 -type f -name 'erp-admin-*.log' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | cut -d' ' -f2-)
+
+if [ -z "${latest_file:-}" ]; then
+    echo "No erp-admin log file found in ${LOG_DIR}" >&2
+    echo "Try: journalctl -u erp-admin -n 100 -f" >&2
+    exit 1
+fi
+
+echo "$latest_file"
+exec tail -f "$latest_file"

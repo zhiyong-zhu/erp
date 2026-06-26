@@ -13,7 +13,9 @@ JAR_FILE="erp-admin-1.0.0-SNAPSHOT.jar"
 BACKUP_DIR="${DEPLOY_ROOT}/backups"
 SYSTEMD_UNIT_SRC="${DEPLOY_ROOT}/scripts/erp-admin.service"
 NGINX_CONF_SRC="${DEPLOY_ROOT}/scripts/nginx.conf"
+WLOG_SRC="${DEPLOY_ROOT}/scripts/wlog"
 ENV_FILE="${DEPLOY_ROOT}/scripts/env.production"
+READY_URL="http://localhost:8080/api/v1/ping"
 HEALTH_URL="http://localhost:8080/actuator/health"
 MAX_RETRIES=30
 RETRY_INTERVAL=2
@@ -38,6 +40,11 @@ install_runtime_config() {
         systemctl enable "${SERVICE_NAME}" >/dev/null 2>&1 || true
     else
         log "未找到 systemd 服务配置，跳过安装"
+    fi
+
+    if [ -f "$WLOG_SRC" ]; then
+        log "安装日志查看脚本..."
+        install -m 0755 "$WLOG_SRC" /usr/local/bin/wlog
     fi
 
     if [ -f "$NGINX_CONF_SRC" ]; then
@@ -132,14 +139,14 @@ start_service() {
     log "等待后端启动..."
     local retries=0
     while [ $retries -lt $MAX_RETRIES ]; do
-        if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+        if curl -sf "$READY_URL" > /dev/null 2>&1; then
             log "后端启动成功（耗时 $((retries * RETRY_INTERVAL))s）"
             return 0
         fi
         retries=$((retries + 1))
         sleep $RETRY_INTERVAL
     done
-    log "后端启动超时！查看日志: journalctl -u ${SERVICE_NAME} -n 50"
+    log "后端启动超时！查看日志: wlog 或 journalctl -u ${SERVICE_NAME} -n 50"
     return 1
 }
 
@@ -185,7 +192,8 @@ rollback_current() {
 # --- 10. 健康检查 ---
 health_check() {
     log "健康检查..."
-    curl -sf "$HEALTH_URL" > /dev/null 2>&1 && log "✅ 后端正常" || log "⚠️ 后端异常"
+    curl -sf "$READY_URL" > /dev/null 2>&1 && log "✅ 后端可访问" || log "⚠️ 后端不可访问"
+    curl -sf "$HEALTH_URL" > /dev/null 2>&1 && log "✅ 后端依赖健康" || log "⚠️ 后端依赖异常（查看 /actuator/health）"
     curl -sf -o /dev/null http://localhost/ 2>&1 && log "✅ Nginx 正常" || log "⚠️ Nginx 异常"
     systemctl is-active --quiet postgresql && log "✅ PostgreSQL 正常" || log "⚠️ PostgreSQL 异常"
     systemctl is-active --quiet redis-server 2>/dev/null && log "✅ Redis 正常" || log "⚠️ Redis 异常"
@@ -194,6 +202,7 @@ health_check() {
 
 # --- 11. 清理日志 ---
 cleanup_logs() {
+    find "${DEPLOY_ROOT}/logs" -type f -name "erp-admin-*.log" -mtime +14 -delete 2>/dev/null || true
     find "${DEPLOY_ROOT}/logs" -name "*.log.*" -mtime +7 -delete 2>/dev/null || true
     journalctl --vacuum-time=7d 2>/dev/null || true
 }
