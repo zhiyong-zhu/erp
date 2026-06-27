@@ -40,6 +40,11 @@ export async function updatePurchaseOrder(id: string, payload: PurchaseOrderUpda
   return response.data.data;
 }
 
+export async function createPurchaseOrder(payload: PurchaseOrderUpdatePayload): Promise<PurchaseOrderRecord> {
+  const response = await http.post<ApiResponse<PurchaseOrderRecord>>("/purchase/orders", payload);
+  return response.data.data;
+}
+
 export async function changePurchaseOrderStatus(id: string, payload: PurchaseOrderStatusPayload): Promise<PurchaseOrderRecord> {
   const response = await http.post<ApiResponse<PurchaseOrderRecord>>(`/purchase/orders/${id}/status`, payload);
   return response.data.data;

@@ -10,6 +10,7 @@ import com.erp.inventory.service.InventoryReceiptService;
 import com.erp.material.domain.vo.MaterialReplenishmentVO;
 import com.erp.material.service.MaterialService;
 import com.erp.purchase.domain.dto.PurchaseDraftGenerateRequest;
+import com.erp.purchase.domain.dto.PurchaseOrderCreateRequest;
 import com.erp.purchase.domain.dto.PurchaseOrderItemUpdateRequest;
 import com.erp.purchase.domain.dto.PurchaseOrderReceiveRequest;
 import com.erp.purchase.domain.dto.PurchaseOrderStatusRequest;
@@ -76,6 +77,28 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     @Override
     public PurchaseOrderVO detail(UUID id) {
         return toVO(getOrder(id));
+    }
+
+    @Override
+    @Transactional
+    public PurchaseOrderVO createDraft(PurchaseOrderCreateRequest request) {
+        PurchaseOrder order = new PurchaseOrder();
+        order.setId(UUID.randomUUID());
+        order.setOrderNo(generateOrderNo("PO-DRAFT"));
+        order.setSupplierId(request.getSupplierId());
+        order.setSupplierName(request.getSupplierName());
+        order.setOrderType("DRAFT");
+        order.setStatus("DRAFT");
+        order.setSourceType("MANUAL");
+        order.setRemark(request.getRemark());
+        order.setCreatedBy(SecurityUtils.getUserId());
+        order.setCreatedAt(OffsetDateTime.now());
+        order.setUpdatedBy(SecurityUtils.getUserId());
+        order.setUpdatedAt(OffsetDateTime.now());
+        purchaseOrderMapper.insert(order);
+
+        replaceItems(order, request.getItems());
+        return toVO(order);
     }
 
     @Override

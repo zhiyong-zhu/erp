@@ -1,8 +1,9 @@
-import { CheckOutlined, EditOutlined, InboxOutlined, SendOutlined } from "@ant-design/icons";
+import { CheckOutlined, EditOutlined, InboxOutlined, PlusOutlined, SendOutlined } from "@ant-design/icons";
 import {
   ModalForm,
   ProFormDigit,
   ProFormList,
+  ProFormSelect,
   ProFormText,
   ProFormTextArea
 } from "@ant-design/pro-components";
@@ -12,6 +13,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
   changePurchaseOrderStatus,
+  createPurchaseOrder,
   createPurchaseReturn,
   fetchPurchaseOrderDetail,
   fetchPurchaseOrders,
@@ -19,6 +21,7 @@ import {
   receivePurchaseOrder,
   updatePurchaseOrder
 } from "../../../api/purchase";
+import { fetchMaterials, fetchSuppliers } from "../../../api/material";
 import { hasPermission } from "../../../store/auth";
 import type {
   PurchaseOrderReceivePayload,
@@ -37,11 +40,13 @@ export function PurchaseOrderPage() {
   const [total, setTotal] = useState(0);
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrderRecord | null>(null);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrderRecord | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [receivingOrder, setReceivingOrder] = useState<PurchaseOrderRecord | null>(null);
   const [returningOrder, setReturningOrder] = useState<PurchaseOrderRecord | null>(null);
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [returns, setReturns] = useState<any[]>([]);
   const { message } = App.useApp();
+  const canCreate = hasPermission(PURCHASE_PERMISSIONS.ORDER_CREATE);
   const canUpdate = hasPermission(PURCHASE_PERMISSIONS.ORDER_UPDATE);
 
   useEffect(() => {
@@ -84,6 +89,19 @@ export function PurchaseOrderPage() {
       setReceivingOrder(await fetchPurchaseOrderDetail(record.id));
     } catch (err: any) {
       message.error(err?.response?.data?.message ?? err?.message ?? "加载采购单详情失败");
+    }
+  }
+
+  async function handleCreate(values: PurchaseOrderUpdatePayload) {
+    try {
+      await createPurchaseOrder(values);
+      message.success("采购单创建成功");
+      setCreateOpen(false);
+      await loadOrders();
+      return true;
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? err?.message ?? "采购单创建失败");
+      return false;
     }
   }
 
@@ -220,9 +238,14 @@ export function PurchaseOrderPage() {
       <div className="page-header">
         <div>
           <Title level={3} style={{ margin: 0 }}>采购管理 / 采购单</Title>
-          <Text type="secondary">管理由补货建议生成的采购草稿，并推进提交、审批、收货入库流程。</Text>
+          <Text type="secondary">管理采购单，推进提交、审批、收货入库流程。</Text>
         </div>
-        <Input.Search allowClear placeholder="搜索采购单号或供应商" style={{ width: 260 }} />
+        <Space>
+          <Input.Search allowClear placeholder="搜索采购单号或供应商" style={{ width: 260 }} />
+          <Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => setCreateOpen(true)}>
+            新建采购单
+          </Button>
+        </Space>
       </div>
 
       <Table
@@ -272,6 +295,74 @@ export function PurchaseOrderPage() {
           </>
         ) : null}
       </Drawer>
+
+      <ModalForm<PurchaseOrderUpdatePayload>
+        title="新建采购单"
+        open={createOpen}
+        width={1080}
+        modalProps={{ destroyOnClose: true, onCancel: () => setCreateOpen(false) }}
+        onFinish={async (values) => {
+          const supplierIdStr = String(values.supplierId ?? "");
+          const supplierData = await fetchSuppliers({ pageNum: 1, pageSize: 200 });
+          const supplier = supplierData.records.find((s) => s.id === supplierIdStr);
+          const materialData = await fetchMaterials({ pageNum: 1, pageSize: 500 });
+          const enrichedItems = (values.items ?? []).map((item: any) => {
+            const mat = materialData.records.find((m) => m.id === item.materialId);
+            const qty = item.quantity ?? 0;
+            const price = item.quotePrice ?? 0;
+            const estimatedAmount = item.estimatedAmount ?? (price * qty);
+            return {
+              ...item,
+              materialCode: mat?.code ?? item.materialCode,
+              materialName: mat?.name ?? item.materialName,
+              unit: mat?.unit ?? item.unit,
+              sourceType: "MANUAL",
+              estimatedAmount
+            };
+          });
+          return handleCreate({
+            ...values,
+            supplierId: supplierIdStr as any,
+            supplierName: supplier?.name,
+            items: enrichedItems
+          });
+        }}
+      >
+        <ProFormSelect
+          name="supplierId"
+          label="供应商"
+          rules={[{ required: true, message: "请选择供应商" }]}
+          showSearch
+          request={async () => {
+            const data = await fetchSuppliers({ pageNum: 1, pageSize: 200 });
+            return data.records.map((s) => ({ label: `${s.name} (${s.code})`, value: s.id }));
+          }}
+          fieldProps={{ optionFilterProp: "label", placeholder: "搜索并选择供应商" }}
+        />
+        <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} />
+        <ProFormList
+          name="items"
+          label="采购明细"
+          creatorButtonProps={{ creatorButtonText: "添加物料" }}
+          min={1}
+        >
+          <ProFormSelect
+            name="materialId"
+            label="原料"
+            rules={[{ required: true, message: "请选择原料" }]}
+            showSearch
+            request={async () => {
+              const data = await fetchMaterials({ pageNum: 1, pageSize: 500 });
+              return data.records.map((m) => ({ label: `${m.name} (${m.code})`, value: m.id }));
+            }}
+            fieldProps={{ optionFilterProp: "label", placeholder: "搜索并选择原料" }}
+          />
+          <ProFormDigit name="quantity" label="采购数量" min={0.01} rules={[{ required: true }]} />
+          <ProFormDigit name="quotePrice" label="报价" min={0} fieldProps={{ precision: 2 }} />
+          <ProFormDigit name="estimatedAmount" label="预估金额(留空自动算)" min={0} fieldProps={{ precision: 2 }} />
+          <ProFormDigit name="leadTimeDays" label="交期(天)" min={0} />
+        </ProFormList>
+      </ModalForm>
 
       <ModalForm<PurchaseOrderUpdatePayload>
         title="编辑采购草稿"
