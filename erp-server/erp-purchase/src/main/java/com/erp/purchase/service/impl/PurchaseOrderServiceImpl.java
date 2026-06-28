@@ -23,6 +23,7 @@ import com.erp.purchase.domain.vo.PurchaseOrderItemVO;
 import com.erp.purchase.domain.vo.PurchaseOrderVO;
 import com.erp.purchase.mapper.PurchaseOrderItemMapper;
 import com.erp.purchase.mapper.PurchaseOrderMapper;
+import com.erp.purchase.mapper.PurchasePaymentMapper;
 import com.erp.purchase.mapper.PurchaseReturnMapper;
 import com.erp.purchase.service.PurchaseExceptionService;
 import com.erp.purchase.service.PurchaseOrderService;
@@ -47,6 +48,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final InventoryReceiptService inventoryReceiptService;
     private final PurchaseReturnMapper purchaseReturnMapper;
     private final PurchaseExceptionService purchaseExceptionService;
+    private final PurchasePaymentMapper purchasePaymentMapper;
 
     public PurchaseOrderServiceImpl(
             PurchaseOrderMapper purchaseOrderMapper,
@@ -54,7 +56,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             MaterialService materialService,
             InventoryReceiptService inventoryReceiptService,
             PurchaseReturnMapper purchaseReturnMapper,
-            PurchaseExceptionService purchaseExceptionService
+            PurchaseExceptionService purchaseExceptionService,
+            PurchasePaymentMapper purchasePaymentMapper
     ) {
         this.purchaseOrderMapper = purchaseOrderMapper;
         this.purchaseOrderItemMapper = purchaseOrderItemMapper;
@@ -62,6 +65,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         this.inventoryReceiptService = inventoryReceiptService;
         this.purchaseReturnMapper = purchaseReturnMapper;
         this.purchaseExceptionService = purchaseExceptionService;
+        this.purchasePaymentMapper = purchasePaymentMapper;
     }
 
     @Override
@@ -367,6 +371,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             vo.setOrderAmount(orderAmount);
             vo.setReturnAmount(returnAmount);
             vo.setNetPayableAmount(orderAmount.subtract(returnAmount));
+
+            BigDecimal paidAmount = supplierOrders.stream()
+                    .map(order -> order.getPaidAmount() == null ? BigDecimal.ZERO : order.getPaidAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            vo.setPaidAmount(paidAmount);
+            vo.setUnpaidAmount(orderAmount.subtract(returnAmount).subtract(paidAmount));
+
             vo.setOrderCount((long) supplierOrders.size());
             vo.setReturnCount((long) supplierReturns.size());
             return vo;

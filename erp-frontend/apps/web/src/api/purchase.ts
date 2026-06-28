@@ -9,6 +9,8 @@ import type {
   PurchaseExceptionHandlePayload,
   PurchaseExceptionRecord,
   PurchasePayableStatRecord,
+  PurchasePaymentPayload,
+  PurchasePaymentRecord,
   PurchaseReturnPayload,
   PurchaseReturnRecord
 } from "../types/purchase";
@@ -77,5 +79,15 @@ export async function fetchPurchaseExceptions(query: PageQuery): Promise<PageRes
 
 export async function handlePurchaseException(id: string, payload: PurchaseExceptionHandlePayload): Promise<PurchaseExceptionRecord> {
   const response = await http.post<ApiResponse<PurchaseExceptionRecord>>(`/purchase/exceptions/${id}/handle`, payload);
+  return response.data.data;
+}
+
+export async function createPurchasePayment(purchaseOrderId: string, payload: PurchasePaymentPayload): Promise<PurchasePaymentRecord> {
+  const response = await http.post<ApiResponse<PurchasePaymentRecord>>(`/purchase/payments/${purchaseOrderId}`, payload);
+  return response.data.data;
+}
+
+export async function fetchPurchasePayments(query: PageQuery & { purchaseOrderId?: string; supplierId?: string }): Promise<PageResult<PurchasePaymentRecord>> {
+  const response = await http.get<ApiResponse<PageResult<PurchasePaymentRecord>>>("/purchase/payments", { params: query });
   return response.data.data;
 }

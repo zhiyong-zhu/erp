@@ -118,8 +118,29 @@ export interface PurchasePayableStatRecord {
   orderAmount?: number | null;
   returnAmount?: number | null;
   netPayableAmount?: number | null;
+  paidAmount?: number | null;
+  unpaidAmount?: number | null;
   orderCount?: number | null;
   returnCount?: number | null;
+}
+
+export interface PurchasePaymentPayload {
+  paidAmount: number;
+  paymentMethod?: string;
+  remark?: string;
+}
+
+export interface PurchasePaymentRecord {
+  id: string;
+  paymentNo: string;
+  purchaseOrderId: string;
+  purchaseOrderNo: string;
+  supplierName?: string | null;
+  paidAmount: number;
+  paymentMethod?: string | null;
+  paymentTime?: string | null;
+  remark?: string | null;
+  createdAt?: string | null;
 }
 
 export interface PurchaseExceptionRecord {

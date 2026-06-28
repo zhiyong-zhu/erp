@@ -20,6 +20,8 @@ public class PurchaseOrder extends BaseEntity {
     private String sourceType;
     private String remark;
     private OffsetDateTime receivedAt;
+    private BigDecimal paidAmount;
+    private String paymentStatus;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -41,4 +43,8 @@ public class PurchaseOrder extends BaseEntity {
     public void setRemark(String remark) { this.remark = remark; }
     public OffsetDateTime getReceivedAt() { return receivedAt; }
     public void setReceivedAt(OffsetDateTime receivedAt) { this.receivedAt = receivedAt; }
+    public BigDecimal getPaidAmount() { return paidAmount; }
+    public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 }

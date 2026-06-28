@@ -9,6 +9,8 @@ public class PurchasePayableStatVO {
     private BigDecimal orderAmount;
     private BigDecimal returnAmount;
     private BigDecimal netPayableAmount;
+    private BigDecimal paidAmount;
+    private BigDecimal unpaidAmount;
     private Long orderCount;
     private Long returnCount;
 
@@ -22,6 +24,10 @@ public class PurchasePayableStatVO {
     public void setReturnAmount(BigDecimal returnAmount) { this.returnAmount = returnAmount; }
     public BigDecimal getNetPayableAmount() { return netPayableAmount; }
     public void setNetPayableAmount(BigDecimal netPayableAmount) { this.netPayableAmount = netPayableAmount; }
+    public BigDecimal getPaidAmount() { return paidAmount; }
+    public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
+    public BigDecimal getUnpaidAmount() { return unpaidAmount; }
+    public void setUnpaidAmount(BigDecimal unpaidAmount) { this.unpaidAmount = unpaidAmount; }
     public Long getOrderCount() { return orderCount; }
     public void setOrderCount(Long orderCount) { this.orderCount = orderCount; }
     public Long getReturnCount() { return returnCount; }
