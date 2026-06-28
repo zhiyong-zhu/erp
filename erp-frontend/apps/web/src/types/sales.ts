@@ -20,7 +20,7 @@ export interface CustomerRecord extends BaseRecord {
 }
 
 export interface CustomerPayload extends BasePayload {
-  code: string;
+  code?: string;
   name: string;
   shortName?: string;
   customerType?: number;

@@ -1,4 +1,5 @@
 import { PlusOutlined } from "@ant-design/icons";
+import { ProFormText } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
 import { CreateForm } from "../../../components/CreateForm";
 import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
@@ -154,6 +155,7 @@ export function CustomerPage() {
         initialValues={
           editingCustomer
             ? {
+                autoGenerateCode: false,
                 code: editingCustomer.code,
                 name: editingCustomer.name,
                 shortName: editingCustomer.shortName ?? "",
@@ -182,23 +184,50 @@ function CustomerForm({
 }: {
   title: string;
   open: boolean;
-  initialValues?: Partial<CustomerPayload>;
+  initialValues?: Partial<CustomerPayload> & { autoGenerateCode?: boolean };
   onCancel: () => void;
-  onFinish: (values: CustomerPayload) => Promise<boolean>;
+  onFinish: (values: CustomerPayload & { autoGenerateCode?: boolean }) => Promise<boolean>;
 }) {
+  // 编辑态默认不自动生成（已有编码），新建态默认自动生成
+  const isEdit = !!initialValues?.code;
   return (
     <CreateForm
       title={title}
       open={open}
       width={980}
-      initialValues={initialValues ?? { customerType: 1, status: 1 }}
+      initialValues={initialValues ?? { autoGenerateCode: true, customerType: 1, status: 1 }}
       onCancel={onCancel}
-      onFinish={onFinish}
+      onFinish={async (values) => {
+        const { autoGenerateCode, ...rest } = values;
+        // 自动生成时清空编码，交由后端生成
+        const payload: CustomerPayload = { ...rest };
+        if (autoGenerateCode) {
+          delete payload.code;
+        }
+        return onFinish(payload);
+      }}
       sections={[
         {
           title: "基本信息",
           fields: [
-            { type: "text", name: "code", label: "客户编码", rules: [{ required: true, message: "请输入客户编码" }], colSpan: 8 },
+            { type: "switch", name: "autoGenerateCode", label: "自动生成编码", defaultChecked: !isEdit, colSpan: 8 },
+            {
+              type: "dep",
+              watch: ["autoGenerateCode"],
+              colSpan: 8,
+              render: (values) => {
+                const auto = values.autoGenerateCode ?? !isEdit;
+                return (
+                  <ProFormText
+                    name="code"
+                    label="客户编码"
+                    placeholder={auto ? "保存时由系统自动生成" : "请输入客户编码"}
+                    disabled={auto}
+                    rules={auto ? [] : [{ required: true, message: "请输入客户编码" }]}
+                  />
+                );
+              }
+            },
             { type: "text", name: "name", label: "客户名称", rules: [{ required: true, message: "请输入客户名称" }], colSpan: 8 },
             { type: "text", name: "shortName", label: "简称", colSpan: 8 },
             { type: "select", name: "customerType", label: "客户类型", options: [{ label: "企业", value: 1 }, { label: "个人", value: 2 }], colSpan: 8 },

@@ -48,7 +48,12 @@ public class CustomerServiceImpl implements CustomerService {
             customer.setCreatedBy(SecurityUtils.getUserId());
             customer.setCreatedAt(OffsetDateTime.now());
         }
-        customer.setCode(request.getCode());
+        // 编码留空时自动生成（C + 4 位序号，按已有编码取最大序号 +1）
+        String code = request.getCode();
+        if (code == null || code.isBlank()) {
+            code = generateNextCode();
+        }
+        customer.setCode(code);
         customer.setName(request.getName());
         customer.setShortName(request.getShortName());
         customer.setCustomerType(request.getCustomerType());
@@ -92,5 +97,27 @@ public class CustomerServiceImpl implements CustomerService {
         vo.setCreatedAt(customer.getCreatedAt());
         vo.setUpdatedAt(customer.getUpdatedAt());
         return vo;
+    }
+
+    /**
+     * 生成下一个客户编码：C + 4 位序号（如 C0001）。
+     * 取所有以 "C" 开头且后接数字的编码中序号最大值 +1，不存在则从 1 开始。
+     */
+    private String generateNextCode() {
+        Customer latest = customerMapper.selectOne(
+                new LambdaQueryWrapper<Customer>()
+                        .likeRight(Customer::getCode, "C")
+                        .orderByDesc(Customer::getCode)
+                        .last("LIMIT 1"));
+        int next = 1;
+        if (latest != null && latest.getCode() != null) {
+            String tail = latest.getCode().substring(1);
+            try {
+                next = Integer.parseInt(tail) + 1;
+            } catch (NumberFormatException ignored) {
+                // 编码非纯数字后缀时从 1 重新开始，后续仍有唯一约束兜底
+            }
+        }
+        return String.format("C%04d", next);
     }
 }

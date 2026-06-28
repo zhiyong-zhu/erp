@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public class CustomerRequest extends BaseDTO {
-    @NotBlank(message = "客户编码不能为空")
+    // 编码可为空：留空时由后端自动生成（C0001 格式）
     private String code;
     @NotBlank(message = "客户名称不能为空")
     private String name;
