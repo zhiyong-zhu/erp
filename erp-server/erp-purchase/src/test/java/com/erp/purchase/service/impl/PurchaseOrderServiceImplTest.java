@@ -13,6 +13,7 @@ import com.erp.purchase.domain.entity.PurchaseReturn;
 import com.erp.purchase.domain.vo.PurchasePayableStatVO;
 import com.erp.purchase.mapper.PurchaseOrderItemMapper;
 import com.erp.purchase.mapper.PurchaseOrderMapper;
+import com.erp.purchase.mapper.PurchasePaymentMapper;
 import com.erp.purchase.mapper.PurchaseReturnMapper;
 import com.erp.purchase.service.PurchaseExceptionService;
 import java.math.BigDecimal;
@@ -32,6 +33,7 @@ class PurchaseOrderServiceImplTest {
     @Mock private InventoryReceiptService inventoryReceiptService;
     @Mock private PurchaseReturnMapper purchaseReturnMapper;
     @Mock private PurchaseExceptionService purchaseExceptionService;
+    @Mock private PurchasePaymentMapper purchasePaymentMapper;
 
     private PurchaseOrderServiceImpl service;
 
@@ -43,7 +45,8 @@ class PurchaseOrderServiceImplTest {
                 materialService,
                 inventoryReceiptService,
                 purchaseReturnMapper,
-                purchaseExceptionService
+                purchaseExceptionService,
+                purchasePaymentMapper
         );
     }
 
