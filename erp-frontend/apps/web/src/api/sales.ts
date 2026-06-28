@@ -10,6 +10,8 @@ import type {
   SaleOrderStatusPayload,
   SaleExceptionHandlePayload,
   SaleExceptionRecord,
+  SalePaymentPayload,
+  SalePaymentRecord,
   SaleReceivableStatRecord,
   SaleReportSummary,
   SaleReturnCreatePayload,
@@ -155,5 +157,15 @@ export async function createEcommerceShop(payload: EcommerceShopPayload): Promis
 
 export async function syncEcommerceOrders(shopId: string): Promise<{ syncedCount: number }> {
   const response = await http.post<ApiResponse<{ syncedCount: number }>>(`/sales/ecommerce/shops/${shopId}/sync-orders`);
+  return response.data.data;
+}
+
+export async function createSalePayment(saleOrderId: string, payload: SalePaymentPayload): Promise<SalePaymentRecord> {
+  const response = await http.post<ApiResponse<SalePaymentRecord>>(`/sales/payments/${saleOrderId}`, payload);
+  return response.data.data;
+}
+
+export async function fetchSalePayments(query: PageQuery & { saleOrderId?: string; customerId?: string }): Promise<PageResult<SalePaymentRecord>> {
+  const response = await http.get<ApiResponse<PageResult<SalePaymentRecord>>>("/sales/payments", { params: query });
   return response.data.data;
 }

@@ -189,8 +189,29 @@ export interface SaleReceivableStatRecord {
   orderAmount?: number | null;
   returnAmount?: number | null;
   netReceivableAmount?: number | null;
+  receivedAmount?: number | null;
+  unreceivedAmount?: number | null;
   orderCount?: number | null;
   returnCount?: number | null;
+}
+
+export interface SalePaymentPayload {
+  receivedAmount: number;
+  paymentMethod?: string;
+  remark?: string;
+}
+
+export interface SalePaymentRecord {
+  id: string;
+  paymentNo: string;
+  saleOrderId: string;
+  saleOrderNo: string;
+  customerName?: string | null;
+  receivedAmount: number;
+  paymentMethod?: string | null;
+  paymentTime?: string | null;
+  remark?: string | null;
+  createdAt?: string | null;
 }
 
 // ========== 销售异常 ==========

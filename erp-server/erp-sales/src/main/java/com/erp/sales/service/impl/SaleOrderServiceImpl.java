@@ -450,6 +450,13 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             vo.setOrderAmount(orderAmount);
             vo.setReturnAmount(returnAmount);
             vo.setNetReceivableAmount(orderAmount.subtract(returnAmount));
+
+            BigDecimal receivedAmount = customerOrders.stream()
+                    .map(order -> order.getPaidAmount() == null ? BigDecimal.ZERO : order.getPaidAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            vo.setReceivedAmount(receivedAmount);
+            vo.setUnreceivedAmount(orderAmount.subtract(returnAmount).subtract(receivedAmount));
+
             vo.setOrderCount((long) customerOrders.size());
             vo.setReturnCount((long) customerReturns.size());
             return vo;

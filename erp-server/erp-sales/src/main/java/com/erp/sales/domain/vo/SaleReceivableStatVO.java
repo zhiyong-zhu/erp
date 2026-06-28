@@ -9,6 +9,8 @@ public class SaleReceivableStatVO {
     private BigDecimal orderAmount;
     private BigDecimal returnAmount;
     private BigDecimal netReceivableAmount;
+    private BigDecimal receivedAmount;
+    private BigDecimal unreceivedAmount;
     private Long orderCount;
     private Long returnCount;
 
@@ -22,6 +24,10 @@ public class SaleReceivableStatVO {
     public void setReturnAmount(BigDecimal returnAmount) { this.returnAmount = returnAmount; }
     public BigDecimal getNetReceivableAmount() { return netReceivableAmount; }
     public void setNetReceivableAmount(BigDecimal netReceivableAmount) { this.netReceivableAmount = netReceivableAmount; }
+    public BigDecimal getReceivedAmount() { return receivedAmount; }
+    public void setReceivedAmount(BigDecimal receivedAmount) { this.receivedAmount = receivedAmount; }
+    public BigDecimal getUnreceivedAmount() { return unreceivedAmount; }
+    public void setUnreceivedAmount(BigDecimal unreceivedAmount) { this.unreceivedAmount = unreceivedAmount; }
     public Long getOrderCount() { return orderCount; }
     public void setOrderCount(Long orderCount) { this.orderCount = orderCount; }
     public Long getReturnCount() { return returnCount; }
