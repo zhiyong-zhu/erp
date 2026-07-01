@@ -28,20 +28,21 @@ function encodePathSegments(key: string): string {
 
 export function buildImageUrl(key: string): string {
   const token = getAccessToken() ?? "";
+  let storageKey = key;
   if (key.startsWith("http://") || key.startsWith("https://")) {
     try {
       const url = new URL(key);
       const idx = url.pathname.indexOf("/product/images/");
       if (idx >= 0) {
-        const storageKey = url.pathname.substring(idx + 1);
-        return `${API_BASE}/product/products/images/${encodePathSegments(storageKey)}?token=${token}`;
+        storageKey = decodeURIComponent(url.pathname.substring(idx + 1));
+      } else {
+        return key;
       }
     } catch {
-      // fall through
+      return key;
     }
-    return key;
   }
-  return `${API_BASE}/product/products/images/${encodePathSegments(key)}?token=${token}`;
+  return `${API_BASE}/product/products/images/${encodePathSegments(storageKey)}?token=${token}`;
 }
 
 export async function fetchProductCategoryTree(): Promise<ProductCategoryRecord[]> {
