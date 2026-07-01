@@ -145,6 +145,8 @@ class ProductionToSalesLedgerClosureTest {
         when(shippingOrderMapper.selectBySaleOrderId(order.getId())).thenReturn(List.of());
         when(productSkuMapper.selectById(orderItem.getSkuId())).thenReturn(sku);
         when(productStockMapper.selectOne(any(Wrapper.class))).thenReturn(stock);
+        // 开启库存校验开关，使发货流程预占库存
+        when(sysParamService.getBoolean(eq("sale_order.confirm_reserve_stock"), eq(true))).thenReturn(true);
 
         saleOrderService.ship(order.getId(), shippingRequest(orderItem.getId()));
 

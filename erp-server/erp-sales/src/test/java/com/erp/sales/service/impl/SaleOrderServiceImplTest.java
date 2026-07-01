@@ -87,6 +87,8 @@ class SaleOrderServiceImplTest {
                 sysParamService,
                 serialNumberService
         );
+        // 默认开启库存校验开关，使确认/发货/复核流程走预占扣减逻辑（与原有测试预期一致）
+        org.mockito.Mockito.lenient().when(sysParamService.getBoolean(eq("sale_order.confirm_reserve_stock"), eq(true))).thenReturn(true);
     }
 
     @Test

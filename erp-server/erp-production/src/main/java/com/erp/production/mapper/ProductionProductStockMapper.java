@@ -27,4 +27,33 @@ public interface ProductionProductStockMapper extends BaseMapper<ProductionProdu
             @Param("updatedBy") UUID updatedBy,
             @Param("updatedAt") OffsetDateTime updatedAt
     );
+
+    @Update("""
+            UPDATE production_product_stock
+            SET current_stock = current_stock - #{quantity},
+                updated_by = #{updatedBy},
+                updated_at = #{updatedAt}
+            WHERE id = #{id}
+              AND current_stock >= #{quantity}
+            """)
+    int decreaseCurrentIfEnough(
+            @Param("id") UUID id,
+            @Param("quantity") BigDecimal quantity,
+            @Param("updatedBy") UUID updatedBy,
+            @Param("updatedAt") OffsetDateTime updatedAt
+    );
+
+    @Update("""
+            UPDATE production_product_stock
+            SET current_stock = current_stock - #{quantity},
+                updated_by = #{updatedBy},
+                updated_at = #{updatedAt}
+            WHERE id = #{id}
+            """)
+    int decreaseCurrentForce(
+            @Param("id") UUID id,
+            @Param("quantity") BigDecimal quantity,
+            @Param("updatedBy") UUID updatedBy,
+            @Param("updatedAt") OffsetDateTime updatedAt
+    );
 }

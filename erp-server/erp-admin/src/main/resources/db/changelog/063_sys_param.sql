@@ -24,3 +24,8 @@ INSERT INTO sys_param (code, name, value, value_type, description) VALUES
     ('sale_order.confirm_reserve_stock', '订单确认校验并锁定库存', 'true', 'BOOL',
      '开启后，确认销售订单时会校验并预占库存；关闭后确认订单不校验、不锁定库存，直接进入待发货')
 ON CONFLICT (code) DO NOTHING;
+
+--changeset erp:v1-4-2-sys-param-005
+UPDATE sys_param SET name = '订单确认/发货校验并预占库存',
+    description = '开启后，确认销售订单与发货时会校验并预占库存；关闭后确认与发货均不校验、不预占库存'
+WHERE code = 'sale_order.confirm_reserve_stock';

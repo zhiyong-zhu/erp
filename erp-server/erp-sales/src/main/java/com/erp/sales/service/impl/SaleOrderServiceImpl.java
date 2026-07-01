@@ -61,8 +61,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private static final String SHIPPING_PENDING_REVIEW = "PENDING_REVIEW";
     private static final String SHIPPING_SHIPPED = "SHIPPED";
     private static final String SHIPPING_CANCELLED = "CANCELLED";
-    /** 系统参数：订单确认时是否校验并锁定库存（默认开启） */
-    private static final String PARAM_CONFIRM_RESERVE_STOCK = "sale_order.confirm_reserve_stock";
+    /** 系统参数：订单确认/发货时是否校验并预占库存（默认开启） */
+    private static final String PARAM_RESERVE_STOCK = "sale_order.confirm_reserve_stock";
 
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
@@ -299,7 +299,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         List<SaleOrderItem> items = getOrderItems(order.getId());
         if (SaleOrderStatusMachine.ACTION_CONFIRM.equals(action)) {
             // 系统参数控制：关闭时确认不校验、不锁定库存，订单直接确认进入待发货
-            boolean reserveStock = sysParamService.getBoolean(PARAM_CONFIRM_RESERVE_STOCK, true);
+            boolean reserveStock = sysParamService.getBoolean(PARAM_RESERVE_STOCK, true);
             if (reserveStock) {
                 reserveOrderStock(order, items);
             }
@@ -329,7 +329,11 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         ShippingOrderRequest actualRequest = request == null ? new ShippingOrderRequest() : request;
         List<SaleOrderItem> items = getOrderItems(order.getId());
         if (SaleOrderStatusMachine.CONFIRMED.equals(order.getStatus())) {
-            reserveOrderStock(order, items);
+            // 系统参数控制：关闭时发货不校验、不预占库存（与确认逻辑一致）
+            boolean reserveStock = sysParamService.getBoolean(PARAM_RESERVE_STOCK, true);
+            if (reserveStock) {
+                reserveOrderStock(order, items);
+            }
             order.setStatus(SaleOrderStatusMachine.PENDING_SHIP);
         }
         Map<UUID, BigDecimal> pendingQuantities = pendingShippingQuantities(order.getId());
@@ -542,22 +546,33 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         txn.setCreatedAt(OffsetDateTime.now());
 
         ProductionProductStock productStock = findProductStock(item);
+        OffsetDateTime now = OffsetDateTime.now();
+        // 库存校验开关：开启时走预占扣减（校验 current + reserved）；关闭时不卡库存，
+        // 有库存记录则仅扣 current，无库存记录则只记出库流水、不阻断发货。
+        boolean reserveStock = sysParamService.getBoolean(PARAM_RESERVE_STOCK, true);
         if (productStock != null) {
             BigDecimal currentStock = safe(productStock.getCurrentStock());
             BigDecimal reservedStock = safe(productStock.getReservedStock());
-            if (currentStock.compareTo(quantity) < 0) {
-                throw new BizException(10004, "成品库存不足: " + productStock.getProductName());
+            if (reserveStock) {
+                if (currentStock.compareTo(quantity) < 0) {
+                    throw new BizException(10004, "成品库存不足: " + productStock.getProductName());
+                }
+                if (reservedStock.compareTo(quantity) < 0) {
+                    throw new BizException(10004, "成品占用库存不足: " + productStock.getProductName());
+                }
+                int updatedRows = productStockMapper.decreaseReservedIfEnough(productStock.getId(), quantity, SecurityUtils.getUserId(), now);
+                if (updatedRows == 0) {
+                    throw new BizException(10004, "成品库存不足或已被其他发货作业占用: " + productStock.getProductName());
+                }
+            } else {
+                int updatedRows = productStockMapper.decreaseCurrentIfEnough(productStock.getId(), quantity, SecurityUtils.getUserId(), now);
+                if (updatedRows == 0) {
+                    // 库存不足时也允许出库，current_stock 扣到负数（仅记流水，不阻断业务流程）
+                    productStockMapper.decreaseCurrentForce(productStock.getId(), quantity, SecurityUtils.getUserId(), now);
+                }
             }
-            if (reservedStock.compareTo(quantity) < 0) {
-                throw new BizException(10004, "成品占用库存不足: " + productStock.getProductName());
-            }
-            OffsetDateTime now = OffsetDateTime.now();
             BigDecimal newStock = currentStock.subtract(quantity);
-            BigDecimal newReservedStock = reservedStock.subtract(quantity);
-            int updatedRows = productStockMapper.decreaseReservedIfEnough(productStock.getId(), quantity, SecurityUtils.getUserId(), now);
-            if (updatedRows == 0) {
-                throw new BizException(10004, "成品库存不足或已被其他发货作业占用: " + productStock.getProductName());
-            }
+            BigDecimal newReservedStock = reserveStock ? reservedStock.subtract(quantity) : reservedStock;
             productStock.setCurrentStock(newStock);
             productStock.setReservedStock(newReservedStock);
             productStock.setUpdatedBy(SecurityUtils.getUserId());
@@ -571,7 +586,20 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             return productStock.getProductId();
         }
 
-        throw new BizException(10004, "未找到可扣减库存的成品库存: " + item.getSkuCode());
+        // 开启库存校验时，无库存记录不允许出库
+        if (reserveStock) {
+            throw new BizException(10004, "未找到可扣减库存的成品库存: " + item.getSkuCode());
+        }
+        // 关闭库存校验时，无库存记录也允许出库：仅记出库流水，productId 从 SKU 反查
+        ProductSku sku = item.getSkuId() != null ? productSkuMapper.selectById(item.getSkuId()) : null;
+        UUID productId = sku != null ? sku.getProductId() : null;
+        txn.setMaterialId(productId);
+        txn.setMaterialCode(item.getSkuCode());
+        txn.setMaterialName(item.getProductName());
+        txn.setBalanceBefore(BigDecimal.ZERO);
+        txn.setBalanceAfter(BigDecimal.ZERO.subtract(quantity));
+        inventoryTransactionMapper.insert(txn);
+        return productId;
     }
 
     private void reserveOrderStock(SaleOrder order, List<SaleOrderItem> items) {
