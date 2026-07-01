@@ -1,7 +1,6 @@
 package com.erp.sales.domain.vo;
 
 import com.erp.common.core.domain.BaseVO;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -15,7 +14,8 @@ public class CustomerVO extends BaseVO {
     private String phone;
     private String email;
     private String address;
-    private BigDecimal creditLimit;
+    /** 客户等级：A=核心客户 B=潜力客户 C=普通客户 */
+    private String grade;
     private Integer paymentTerms;
     private UUID salesRepId;
     private String taxNumber;
@@ -40,8 +40,8 @@ public class CustomerVO extends BaseVO {
     public void setEmail(String email) { this.email = email; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
-    public BigDecimal getCreditLimit() { return creditLimit; }
-    public void setCreditLimit(BigDecimal creditLimit) { this.creditLimit = creditLimit; }
+    public String getGrade() { return grade; }
+    public void setGrade(String grade) { this.grade = grade; }
     public Integer getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(Integer paymentTerms) { this.paymentTerms = paymentTerms; }
     public UUID getSalesRepId() { return salesRepId; }

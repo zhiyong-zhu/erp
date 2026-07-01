@@ -21,6 +21,9 @@ public final class SystemPermissionCodes {
     public static final String DICT_CREATE = "system:dict:create";
     public static final String DICT_UPDATE = "system:dict:update";
 
+    public static final String PARAM_LIST = "system:param:list";
+    public static final String PARAM_UPDATE = "system:param:update";
+
     public static final String LOG_LIST = "system:log:list";
 
     private SystemPermissionCodes() {

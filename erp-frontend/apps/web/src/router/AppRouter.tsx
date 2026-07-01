@@ -34,6 +34,7 @@ import { PurchaseOrderPage } from "../pages/purchase/orders/PurchaseOrderPage";
 import { DepartmentManagementPage } from "../pages/system/departments/DepartmentManagementPage";
 import { DictManagementPage } from "../pages/system/dicts/DictManagementPage";
 import { OperationLogPage } from "../pages/system/logs/OperationLogPage";
+import { ParamManagementPage } from "../pages/system/params/ParamManagementPage";
 import { RoleManagementPage } from "../pages/system/roles/RoleManagementPage";
 import { UserManagementPage } from "../pages/system/users/UserManagementPage";
 import { clearAuth, getAuthState, saveTokens, saveUser, subscribeAuth } from "../store/auth";
@@ -62,6 +63,9 @@ function resolveDefaultRoute() {
   }
   if (permissions.includes(SYSTEM_PERMISSIONS.DICT_LIST)) {
     return "/system/dict";
+  }
+  if (permissions.includes(SYSTEM_PERMISSIONS.PARAM_LIST)) {
+    return "/system/params";
   }
   if (permissions.includes(SYSTEM_PERMISSIONS.LOG_LIST)) {
     return "/system/logs";
@@ -196,6 +200,7 @@ export function AppRouter() {
             <Route path="/system/departments" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.DEPT_LIST}><DepartmentManagementPage /></PermissionGuard>} />
             <Route path="/system/roles" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.ROLE_LIST}><RoleManagementPage /></PermissionGuard>} />
             <Route path="/system/dict" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.DICT_LIST}><DictManagementPage /></PermissionGuard>} />
+            <Route path="/system/params" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.PARAM_LIST}><ParamManagementPage /></PermissionGuard>} />
             <Route path="/system/logs" element={<PermissionGuard bootstrapping={bootstrapping} permission={SYSTEM_PERMISSIONS.LOG_LIST}><OperationLogPage /></PermissionGuard>} />
             <Route path="/product/categories" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.CATEGORY_LIST}><ProductCategoryPage /></PermissionGuard>} />
             <Route path="/product/products" element={<PermissionGuard bootstrapping={bootstrapping} permission={PRODUCT_PERMISSIONS.PRODUCT_LIST}><ProductManagementPage /></PermissionGuard>} />

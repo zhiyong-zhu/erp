@@ -61,7 +61,7 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
-        customer.setCreditLimit(request.getCreditLimit());
+        customer.setGrade(request.getGrade());
         customer.setPaymentTerms(request.getPaymentTerms());
         customer.setSalesRepId(request.getSalesRepId());
         customer.setTaxNumber(request.getTaxNumber());
@@ -88,7 +88,7 @@ public class CustomerServiceImpl implements CustomerService {
         vo.setPhone(customer.getPhone());
         vo.setEmail(customer.getEmail());
         vo.setAddress(customer.getAddress());
-        vo.setCreditLimit(customer.getCreditLimit());
+        vo.setGrade(customer.getGrade());
         vo.setPaymentTerms(customer.getPaymentTerms());
         vo.setSalesRepId(customer.getSalesRepId());
         vo.setTaxNumber(customer.getTaxNumber());

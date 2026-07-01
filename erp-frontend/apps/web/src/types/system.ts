@@ -87,7 +87,29 @@ export interface DictDataPayload {
   status?: number;
 }
 
+/** 值类型：BOOL / STRING / INT */
+export type ParamValueType = "BOOL" | "STRING" | "INT";
+
+export interface SysParamRecord {
+  id: string;
+  code: string;
+  name: string;
+  value: string;
+  valueType: ParamValueType;
+  description?: string | null;
+  status: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SysParamUpdatePayload {
+  value: string;
+  description?: string;
+  status?: number;
+}
+
 export interface OperationLogRecord {
+
   id: number;
   userId?: string | null;
   username?: string | null;

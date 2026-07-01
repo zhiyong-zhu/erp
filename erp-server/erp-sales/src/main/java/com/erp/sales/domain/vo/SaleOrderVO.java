@@ -27,6 +27,8 @@ public class SaleOrderVO extends BaseVO {
     private OffsetDateTime paidAt;
     private OffsetDateTime shippedAt;
     private OffsetDateTime completedAt;
+    /** 是否存在未处理的销售异常（OPEN），用于前端确认门禁 */
+    private boolean hasOpenException;
     private List<SaleOrderItemVO> items;
     private List<ShippingVO> shippingOrders;
 
@@ -70,6 +72,8 @@ public class SaleOrderVO extends BaseVO {
     public void setShippedAt(OffsetDateTime shippedAt) { this.shippedAt = shippedAt; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
+    public boolean isHasOpenException() { return hasOpenException; }
+    public void setHasOpenException(boolean hasOpenException) { this.hasOpenException = hasOpenException; }
     public List<SaleOrderItemVO> getItems() { return items; }
     public void setItems(List<SaleOrderItemVO> items) { this.items = items; }
     public List<ShippingVO> getShippingOrders() { return shippingOrders; }

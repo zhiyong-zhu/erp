@@ -1,8 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ProFormText } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
 import { CreateForm } from "../../../components/CreateForm";
-import { App, Button, Input, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Checkbox, Form, Input, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -16,6 +15,16 @@ import type { CustomerPayload, CustomerRecord } from "../../../types/sales";
 const { Title, Text } = Typography;
 
 const CUSTOMER_TYPE_MAP: Record<number, string> = { 1: "企业", 2: "个人" };
+const GRADE_MAP: Record<string, { label: string; color: string }> = {
+  A: { label: "核心客户", color: "gold" },
+  B: { label: "潜力客户", color: "blue" },
+  C: { label: "普通客户", color: "default" }
+};
+const GRADE_OPTIONS = [
+  { label: "A - 核心客户", value: "A" },
+  { label: "B - 潜力客户", value: "B" },
+  { label: "C - 普通客户", value: "C" }
+];
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: "启用", color: "green" },
   0: { label: "禁用", color: "red" }
@@ -91,8 +100,11 @@ export function CustomerPage() {
     { title: "电话", dataIndex: "phone", key: "phone", width: 140 },
     { title: "邮箱", dataIndex: "email", key: "email", width: 180 },
     {
-      title: "信用额度", dataIndex: "creditLimit", key: "creditLimit", width: 120,
-      render: (v: number) => v != null ? `¥${v.toLocaleString()}` : "-"
+      title: "客户等级", dataIndex: "grade", key: "grade", width: 110,
+      render: (v: string) => {
+        const g = GRADE_MAP[v ?? ""];
+        return g ? <Tag color={g.color}>{v} · {g.label}</Tag> : "-";
+      }
     },
     {
       title: "状态", dataIndex: "status", key: "status", width: 80,
@@ -164,7 +176,7 @@ export function CustomerPage() {
                 phone: editingCustomer.phone ?? "",
                 email: editingCustomer.email ?? "",
                 address: editingCustomer.address ?? "",
-                creditLimit: editingCustomer.creditLimit ?? undefined,
+                grade: editingCustomer.grade ?? "C",
                 paymentTerms: editingCustomer.paymentTerms ?? undefined,
                 taxNumber: editingCustomer.taxNumber ?? "",
                 status: editingCustomer.status,
@@ -176,6 +188,42 @@ export function CustomerPage() {
         onFinish={handleUpdate}
       />
     </section>
+  );
+}
+
+/**
+ * 客户编码输入框：自动生成复选框内嵌在输入框内部（suffix），
+ * 与输入框一体化。勾选「自动」时禁用输入并清空值，提交时交后端生成。
+ */
+function CodeInputWithAuto({ autoGenerate }: { autoGenerate: boolean }) {
+  const form = Form.useFormInstance();
+  const auto = autoGenerate;
+  return (
+    <Form.Item
+      label="客户编码"
+      name="code"
+      rules={auto ? [] : [{ required: true, message: "请输入客户编码" }]}
+    >
+      <Input
+        allowClear
+        disabled={auto}
+        placeholder={auto ? "保存时由系统自动生成" : "请输入客户编码"}
+        suffix={
+          <Checkbox
+            checked={auto}
+            onChange={(e) => {
+              form.setFieldValue("autoGenerateCode", e.target.checked);
+              if (e.target.checked) {
+                // 切回自动生成时清空已输入的编码
+                form.setFieldValue("code", undefined);
+              }
+            }}
+          >
+            自动
+          </Checkbox>
+        }
+      />
+    </Form.Item>
   );
 }
 
@@ -195,7 +243,7 @@ function CustomerForm({
       title={title}
       open={open}
       width={980}
-      initialValues={initialValues ?? { autoGenerateCode: true, customerType: 1, status: 1 }}
+      initialValues={initialValues ?? { autoGenerateCode: true, customerType: 1, grade: "C", status: 1 }}
       onCancel={onCancel}
       onFinish={async (values) => {
         const { autoGenerateCode, ...rest } = values;
@@ -210,23 +258,13 @@ function CustomerForm({
         {
           title: "基本信息",
           fields: [
-            { type: "switch", name: "autoGenerateCode", label: "自动生成编码", defaultChecked: !isEdit, colSpan: 8 },
             {
               type: "dep",
               watch: ["autoGenerateCode"],
               colSpan: 8,
-              render: (values) => {
-                const auto = values.autoGenerateCode ?? !isEdit;
-                return (
-                  <ProFormText
-                    name="code"
-                    label="客户编码"
-                    placeholder={auto ? "保存时由系统自动生成" : "请输入客户编码"}
-                    disabled={auto}
-                    rules={auto ? [] : [{ required: true, message: "请输入客户编码" }]}
-                  />
-                );
-              }
+              render: (values) => (
+                <CodeInputWithAuto autoGenerate={values.autoGenerateCode ?? !isEdit} />
+              )
             },
             { type: "text", name: "name", label: "客户名称", rules: [{ required: true, message: "请输入客户名称" }], colSpan: 8 },
             { type: "text", name: "shortName", label: "简称", colSpan: 8 },
@@ -239,7 +277,7 @@ function CustomerForm({
         {
           title: "商务信息",
           fields: [
-            { type: "digit", name: "creditLimit", label: "信用额度", min: 0, precision: 2, colSpan: 8 },
+            { type: "select", name: "grade", label: "客户等级", options: GRADE_OPTIONS, colSpan: 8 },
             { type: "select", name: "paymentTerms", label: "付款条件", options: [{ label: "货到付款", value: 1 }, { label: "30天", value: 2 }, { label: "60天", value: 3 }, { label: "90天", value: 4 }], colSpan: 8 },
             { type: "text", name: "taxNumber", label: "税号", colSpan: 8 },
             { type: "select", name: "status", label: "状态", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }], colSpan: 8 },

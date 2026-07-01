@@ -23,6 +23,9 @@ public enum SystemPermissionDefinition implements PermissionDefinition {
     DICT_CREATE(SystemPermissionCodes.DICT_CREATE, "创建字典", 3, null, null, 41, DICT_LIST.code, true),
     DICT_UPDATE(SystemPermissionCodes.DICT_UPDATE, "更新字典", 3, null, null, 42, DICT_LIST.code, true),
 
+    PARAM_LIST(SystemPermissionCodes.PARAM_LIST, "系统参数", 2, "/system/params", "tool", 45, SYSTEM_ROOT.code, true),
+    PARAM_UPDATE(SystemPermissionCodes.PARAM_UPDATE, "更新参数", 3, null, null, 46, PARAM_LIST.code, true),
+
     LOG_LIST(SystemPermissionCodes.LOG_LIST, "操作日志", 2, "/system/logs", "file-search", 50, SYSTEM_ROOT.code, true);
 
     private final String code;

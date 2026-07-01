@@ -18,6 +18,7 @@ import com.erp.sales.domain.dto.SaleOrderCreateRequest;
 import com.erp.sales.domain.dto.SaleOrderStatusRequest;
 import com.erp.sales.domain.dto.ShippingOrderRequest;
 import com.erp.sales.domain.entity.Customer;
+import com.erp.sales.domain.entity.SaleException;
 import com.erp.sales.domain.entity.SaleOrder;
 import com.erp.sales.domain.entity.SaleOrderItem;
 import com.erp.sales.domain.entity.SaleReturn;
@@ -29,6 +30,7 @@ import com.erp.sales.domain.vo.SaleReceivableStatVO;
 import com.erp.sales.domain.vo.ShippingItemVO;
 import com.erp.sales.domain.vo.ShippingVO;
 import com.erp.sales.mapper.CustomerMapper;
+import com.erp.sales.mapper.SaleExceptionMapper;
 import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
@@ -36,6 +38,7 @@ import com.erp.sales.mapper.ShippingOrderItemMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
 import com.erp.sales.service.SaleExceptionService;
 import com.erp.sales.service.SaleOrderService;
+import com.erp.system.service.SysParamService;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -58,6 +61,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private static final String SHIPPING_PENDING_REVIEW = "PENDING_REVIEW";
     private static final String SHIPPING_SHIPPED = "SHIPPED";
     private static final String SHIPPING_CANCELLED = "CANCELLED";
+    /** 系统参数：订单确认时是否校验并锁定库存（默认开启） */
+    private static final String PARAM_CONFIRM_RESERVE_STOCK = "sale_order.confirm_reserve_stock";
 
     private final SaleOrderMapper saleOrderMapper;
     private final SaleOrderItemMapper saleOrderItemMapper;
@@ -69,6 +74,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
     private final ProductionProductStockMapper productStockMapper;
     private final InventoryTransactionMapper inventoryTransactionMapper;
     private final SaleExceptionService saleExceptionService;
+    private final SaleExceptionMapper saleExceptionMapper;
+    private final SysParamService sysParamService;
     private final ProductionSerialNumberService serialNumberService;
 
     public SaleOrderServiceImpl(
@@ -82,6 +89,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
             ProductionProductStockMapper productStockMapper,
             InventoryTransactionMapper inventoryTransactionMapper,
             SaleExceptionService saleExceptionService,
+            SaleExceptionMapper saleExceptionMapper,
+            SysParamService sysParamService,
             ProductionSerialNumberService serialNumberService
     ) {
         this.saleOrderMapper = saleOrderMapper;
@@ -94,6 +103,8 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         this.productStockMapper = productStockMapper;
         this.inventoryTransactionMapper = inventoryTransactionMapper;
         this.saleExceptionService = saleExceptionService;
+        this.saleExceptionMapper = saleExceptionMapper;
+        this.sysParamService = sysParamService;
         this.serialNumberService = serialNumberService;
     }
 
@@ -200,32 +211,72 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         order.setUpdatedBy(SecurityUtils.getUserId());
         order.setUpdatedAt(OffsetDateTime.now());
 
-        // Replace items
+        // Diff 策略更新明细：
+        // - 产品或数量未变的行（按提交的 item id 命中且 skuId+quantity 不变）：原地更新单价等，保留明细行与其引用的异常。
+        // - 产品或数量变化的行（含被删除的行）：先级联清理引用该明细的异常，再删明细；新增行直接插入。
+        // 这样只有真正改动了产品/数量的明细才会连带清理异常，其余异常得以保留。
         List<SaleOrderItem> existing = saleOrderItemMapper.selectBySaleOrderId(order.getId());
-        for (SaleOrderItem item : existing) {
-            saleOrderItemMapper.deleteById(item.getId());
+        Map<UUID, SaleOrderItem> existingById = existing.stream()
+                .collect(Collectors.toMap(SaleOrderItem::getId, i -> i, (a, b) -> a));
+        Set<UUID> submittedIds = request.getItems().stream()
+                .map(SaleOrderCreateRequest.Item::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // 删除：被移除的明细（未出现在提交列表），先级联清理引用它的异常
+        for (SaleOrderItem old : existing) {
+            if (!submittedIds.contains(old.getId())) {
+                saleExceptionMapper.delete(new LambdaQueryWrapper<SaleException>()
+                        .eq(SaleException::getSaleOrderItemId, old.getId()));
+                saleOrderItemMapper.deleteById(old.getId());
+            }
         }
 
         BigDecimal totalAmount = BigDecimal.ZERO;
+        OffsetDateTime now = OffsetDateTime.now();
         for (SaleOrderCreateRequest.Item itemReq : request.getItems()) {
-            SaleOrderItem item = new SaleOrderItem();
-            item.setId(UUID.randomUUID());
-            item.setSaleOrderId(order.getId());
-            item.setSkuId(itemReq.getSkuId());
-            item.setSkuCode(itemReq.getSkuCode());
-            item.setProductName(itemReq.getProductName());
-            item.setUnit(itemReq.getUnit());
-            item.setQuantity(safe(itemReq.getQuantity()));
-            item.setShippedQuantity(BigDecimal.ZERO);
-            item.setUnitPrice(itemReq.getUnitPrice());
             BigDecimal amount = itemReq.getAmount();
             if (amount == null && itemReq.getUnitPrice() != null && itemReq.getQuantity() != null) {
                 amount = itemReq.getUnitPrice().multiply(itemReq.getQuantity());
             }
-            item.setAmount(amount);
-            item.setRemark(itemReq.getRemark());
-            item.setCreatedAt(OffsetDateTime.now());
-            saleOrderItemMapper.insert(item);
+
+            SaleOrderItem matched = itemReq.getId() != null ? existingById.get(itemReq.getId()) : null;
+            boolean productOrQtyChanged = matched == null
+                    || !java.util.Objects.equals(matched.getSkuId(), itemReq.getSkuId())
+                    || matched.getQuantity().compareTo(safe(itemReq.getQuantity())) != 0;
+
+            if (matched != null && !productOrQtyChanged) {
+                // 保留明细：仅更新单价/备注/金额等，不重建，异常引用保留
+                matched.setSkuId(itemReq.getSkuId());
+                matched.setSkuCode(itemReq.getSkuCode());
+                matched.setProductName(itemReq.getProductName());
+                matched.setUnit(itemReq.getUnit());
+                matched.setUnitPrice(itemReq.getUnitPrice());
+                matched.setAmount(amount);
+                matched.setRemark(itemReq.getRemark());
+                saleOrderItemMapper.updateById(matched);
+            } else {
+                // 产品或数量变化：删除旧明细（级联清异常）后插入新明细；或直接新增
+                if (matched != null) {
+                    saleExceptionMapper.delete(new LambdaQueryWrapper<SaleException>()
+                            .eq(SaleException::getSaleOrderItemId, matched.getId()));
+                    saleOrderItemMapper.deleteById(matched.getId());
+                }
+                SaleOrderItem item = new SaleOrderItem();
+                item.setId(UUID.randomUUID());
+                item.setSaleOrderId(order.getId());
+                item.setSkuId(itemReq.getSkuId());
+                item.setSkuCode(itemReq.getSkuCode());
+                item.setProductName(itemReq.getProductName());
+                item.setUnit(itemReq.getUnit());
+                item.setQuantity(safe(itemReq.getQuantity()));
+                item.setShippedQuantity(BigDecimal.ZERO);
+                item.setUnitPrice(itemReq.getUnitPrice());
+                item.setAmount(amount);
+                item.setRemark(itemReq.getRemark());
+                item.setCreatedAt(now);
+                saleOrderItemMapper.insert(item);
+            }
             if (amount != null) {
                 totalAmount = totalAmount.add(amount);
             }
@@ -247,7 +298,11 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         String nextStatus = SaleOrderStatusMachine.next(order.getStatus(), action);
         List<SaleOrderItem> items = getOrderItems(order.getId());
         if (SaleOrderStatusMachine.ACTION_CONFIRM.equals(action)) {
-            reserveOrderStock(order, items);
+            // 系统参数控制：关闭时确认不校验、不锁定库存，订单直接确认进入待发货
+            boolean reserveStock = sysParamService.getBoolean(PARAM_CONFIRM_RESERVE_STOCK, true);
+            if (reserveStock) {
+                reserveOrderStock(order, items);
+            }
         }
         if (SaleOrderStatusMachine.ACTION_CANCEL.equals(action)) {
             cancelPendingShippingOrders(order);
@@ -781,6 +836,7 @@ public class SaleOrderServiceImpl implements SaleOrderService {
         List<ShippingOrder> shippingOrders = shippingOrderMapper.selectBySaleOrderId(order.getId());
         vo.setItems((items == null ? List.<SaleOrderItem>of() : items).stream().map(this::toItemVO).toList());
         vo.setShippingOrders((shippingOrders == null ? List.<ShippingOrder>of() : shippingOrders).stream().map(this::toShippingVO).toList());
+        vo.setHasOpenException(saleExceptionService.countOpenByOrderId(order.getId()) > 0);
         return vo;
     }
 

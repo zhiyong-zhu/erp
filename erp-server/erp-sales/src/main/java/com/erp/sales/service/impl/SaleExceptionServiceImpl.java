@@ -93,6 +93,14 @@ public class SaleExceptionServiceImpl implements SaleExceptionService {
         return toVO(exception);
     }
 
+    @Override
+    public long countOpenByOrderId(UUID orderId) {
+        return saleExceptionMapper.selectCount(
+                new LambdaQueryWrapper<SaleException>()
+                        .eq(SaleException::getSaleOrderId, orderId)
+                        .eq(SaleException::getStatus, "OPEN"));
+    }
+
     private SaleException baseException(String exceptionType, String description) {
         SaleException exception = new SaleException();
         exception.setId(UUID.randomUUID());

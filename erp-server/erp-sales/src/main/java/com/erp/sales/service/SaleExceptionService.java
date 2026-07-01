@@ -14,4 +14,6 @@ public interface SaleExceptionService {
     void createReturnException(SaleReturn saleReturn, SaleReturnItem item, String exceptionType, String description);
     PageVO<SaleExceptionVO> list(long pageNum, long pageSize);
     SaleExceptionVO handle(UUID id, SaleExceptionHandleRequest request);
+    /** 统计订单关联的未处理（OPEN）异常数量，用于确认门禁。 */
+    long countOpenByOrderId(UUID orderId);
 }

@@ -19,6 +19,9 @@ export const SYSTEM_PERMISSIONS = {
   DICT_CREATE: "system:dict:create",
   DICT_UPDATE: "system:dict:update",
 
+  PARAM_LIST: "system:param:list",
+  PARAM_UPDATE: "system:param:update",
+
   LOG_LIST: "system:log:list"
 } as const;
 

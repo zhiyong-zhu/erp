@@ -1,10 +1,10 @@
 import { CheckOutlined, EditOutlined, SendOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormDigit, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
+import { ModalForm, ProFormCascader, ProFormDigit, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
 import { CreateForm } from "../../../components/CreateForm";
-import { App, Button, Drawer, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Col, Drawer, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   changeSaleOrderStatus,
   createSaleOrder,
@@ -14,7 +14,7 @@ import {
   shipSaleOrder,
   updateSaleOrder
 } from "../../../api/sales";
-import { fetchProducts } from "../../../api/product";
+import { fetchProductDetail, fetchProducts } from "../../../api/product";
 import { hasPermission } from "../../../store/auth";
 import type {
   SaleOrderCreatePayload,
@@ -243,7 +243,13 @@ export function SaleOrderPage() {
             <Button type="link" icon={<EditOutlined />} disabled={!canUpdate} onClick={() => void openEdit(record)}>编辑</Button>
           )}
           {canConfirmOrder(record.status) && (
-            <Button type="link" icon={<CheckOutlined />} disabled={!canUpdate} onClick={() => confirmStatusChange(record, "confirm")}>确认</Button>
+            record.hasOpenException ? (
+              <Tooltip title="请先处理销售异常后再确认">
+                <Button type="link" icon={<CheckOutlined />} disabled>确认</Button>
+              </Tooltip>
+            ) : (
+              <Button type="link" icon={<CheckOutlined />} disabled={!canUpdate} onClick={() => confirmStatusChange(record, "confirm")}>确认</Button>
+            )
           )}
           {canCancelOrder(record.status) && (
             <Button type="link" disabled={!canUpdate} onClick={() => confirmStatusChange(record, "cancel")}>取消</Button>
@@ -359,6 +365,7 @@ export function SaleOrderPage() {
           freightAmount: editingOrder.freightAmount ?? undefined,
           remark: editingOrder.remark ?? "",
           items: editingOrder.items.map((i) => ({
+            id: i.id,
             skuId: i.skuId ?? "",
             skuCode: i.skuCode ?? "",
             productName: i.productName ?? "",
@@ -586,12 +593,18 @@ function OrderFormModal({
 }) {
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  // Map skuId -> resolved SKU info (filled when user selects a SKU in any row)
+  // skuId -> resolved SKU info (filled when user selects a SKU in any row)
   const [skuInfoMap, setSkuInfoMap] = useState<Record<string, {
     skuCode: string; productName: string; unit: string; unitPrice?: number
   }>>({});
+  // 共享的 SKU 缓存：productId -> 该产品下启用 SKU 的级联子节点（所有明细行共用，避免重复请求）
+  const [skuChildrenCache, setSkuChildrenCache] = useState<Record<string, CascaderOption[]>>({});
+  // 编辑态：根据已选 skuId 反查 productSkuPath 后的初始值（异步，仅编辑时计算）
+  const [resolvedInitialValues, setResolvedInitialValues] = useState<any>(undefined);
+  const formRef = useRef<any>(null);
 
-  // Load products for SKU selection
+  // Load product list for the first-level selector. SKUs are loaded lazily
+  // per product only when the user expands that product (see SkuCascaderField).
   useEffect(() => {
     if (open) {
       setProductsLoading(true);
@@ -601,20 +614,68 @@ function OrderFormModal({
         .finally(() => setProductsLoading(false));
     } else {
       setSkuInfoMap({});
+      setSkuChildrenCache({});
+      setResolvedInitialValues(undefined);
     }
   }, [open]);
 
-  // Build flat list: all SKUs with parent product info
-  const allSkus = products.flatMap((p) =>
-    (p.skus ?? []).map((sku) => ({
-      skuId: sku.id ?? "",
-      skuCode: sku.skuCode,
-      productName: p.name,
-      unit: p.unit,
-      unitPrice: sku.price ?? undefined,
-      label: `${p.name} - ${sku.skuCode}${sku.attributes ? ` (${sku.attributes})` : ""}`
-    }))
-  );
+  // 编辑态回填：产品列表就绪后，对已有明细行按产品名匹配并仅拉取涉及产品的 SKU，
+  // 反查 [productId, skuId] 路径，让 Cascader 能正确展示已选项。
+  useEffect(() => {
+    if (!open || !initialValues?.items || products.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const items: any[] = initialValues.items;
+      // 按产品名匹配出 productId（明细行带有 productName）
+      const productByName = new Map(products.map((p) => [p.name, p.id]));
+      const involvedProductIds = new Set<string>();
+      const nextSkuChildren: Record<string, CascaderOption[]> = {};
+      const nextSkuInfo: typeof skuInfoMap = {};
+      const resolvedItems = await Promise.all(items.map(async (item) => {
+        const productId = productByName.get(item.productName);
+        // 已能定位产品且尚未缓存时，拉取其 SKU 列表
+        if (productId && !nextSkuChildren[productId] && !skuChildrenCache[productId]) {
+          const detail = await fetchProductDetail(productId);
+          const list = (detail.skus ?? [])
+            .filter((sku) => sku.status !== 0)
+            .map((sku) => ({
+              skuId: sku.id ?? "",
+              skuCode: sku.skuCode,
+              productName: detail.name,
+              unit: detail.unit,
+              unitPrice: sku.price ?? undefined,
+              label: `${sku.skuCode}${sku.attributes ? ` (${sku.attributes})` : ""}`
+            }));
+          nextSkuChildren[productId] = list.map((s) => ({ label: s.label, value: s.skuId, isLeaf: true }));
+          list.forEach((s) => { nextSkuInfo[s.skuId] = s; });
+        }
+        const path = productId && item.skuId ? [productId, item.skuId] : undefined;
+        return { ...item, productSkuPath: path };
+      }));
+      if (cancelled) return;
+      Object.entries(nextSkuChildren).forEach(([pid, children]) => {
+        setSkuChildrenCache((prev) => (prev[pid] ? prev : { ...prev, [pid]: children }));
+      });
+      if (Object.keys(nextSkuInfo).length > 0) {
+        setSkuInfoMap((prev) => ({ ...prev, ...nextSkuInfo }));
+      }
+      setResolvedInitialValues({ ...initialValues, items: resolvedItems });
+      // 同步回填到已挂载的表单实例，确保 Cascader 展示已选项
+      formRef.current?.setFieldsValue({ items: resolvedItems });
+    })();
+    return () => { cancelled = true; };
+    // 仅在弹窗打开且产品列表首次就绪时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, products]);
+
+  const productOptions = products.map((p) => ({ label: `${p.name} (${p.code})`, value: p.id }));
+
+  // Cascader 第一层：产品（子节点懒加载，展开时按需填充）
+  const cascaderOptions: CascaderOption[] = productOptions.map((p) => ({
+    label: p.label,
+    value: p.value,
+    isLeaf: false
+  }));
 
   return (
     <ModalForm<SaleOrderCreatePayload>
@@ -623,18 +684,23 @@ function OrderFormModal({
       width={1080}
       grid
       rowProps={{ gutter: 16 }}
-      initialValues={initialValues ?? { orderSource: "MANUAL" }}
+      formRef={formRef}
+      initialValues={resolvedInitialValues ?? initialValues ?? { orderSource: "MANUAL" }}
       modalProps={{ destroyOnClose: true, onCancel }}
       onFinish={async (values) => {
-        // Enrich items with SKU info from the skuInfoMap
+        // Resolve skuId from the cascader path ([productId, skuId]), enrich with
+        // SKU info, and drop the helper-only path so the payload matches backend.
         const enrichedItems = values.items?.map((item) => {
-          const info = skuInfoMap[item.skuId || ""];
+          const { productSkuPath, ...rest } = item as SaleOrderItemPayload & { productSkuPath?: string[] };
+          const skuId = (Array.isArray(productSkuPath) && productSkuPath.length === 2 ? productSkuPath[1] : rest.skuId) ?? "";
+          const info = skuInfoMap[skuId || ""];
           return {
-            ...item,
-            skuCode: info?.skuCode || item.skuCode,
-            productName: info?.productName || item.productName,
-            unit: info?.unit || item.unit,
-            unitPrice: info?.unitPrice ?? item.unitPrice
+            ...rest,
+            skuId,
+            skuCode: info?.skuCode || rest.skuCode,
+            productName: info?.productName || rest.productName,
+            unit: info?.unit || rest.unit,
+            unitPrice: info?.unitPrice ?? rest.unitPrice
           };
         });
         return onFinish({ ...values, items: enrichedItems as SaleOrderItemPayload[] });
@@ -670,61 +736,118 @@ function OrderFormModal({
         itemRender={(dom, index) => dom.listDom}
         colProps={{ span: 24 }}
       >
-        <SkuSelectField
-          allSkus={allSkus}
-          productsLoading={productsLoading}
-          onSkuSelected={(skuInfo) => {
-            setSkuInfoMap((prev) => ({ ...prev, [skuInfo.skuId]: skuInfo }));
-          }}
-        />
-        <ProFormDigit name="quantity" label="数量" min={0.01} rules={[{ required: true, message: "请输入数量" }]} colProps={{ xs: 24, md: 3 }} />
-        <ProFormDigit name="unitPrice" label="单价" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 3 }} />
+        <Row gutter={16} style={{ width: "100%" }}>
+          <Col xs={24} md={10}>
+            <SkuCascaderField
+              options={cascaderOptions}
+              loading={productsLoading}
+              skuChildrenCache={skuChildrenCache}
+              onSkuChildrenLoaded={(productId, children) =>
+                setSkuChildrenCache((prev) => ({ ...prev, [productId]: children }))
+              }
+              onSkuSelected={(skuInfo) => {
+                setSkuInfoMap((prev) => ({ ...prev, [skuInfo.skuId]: skuInfo }));
+              }}
+            />
+          </Col>
+          <Col xs={24} md={4}>
+            <ProFormDigit name="quantity" label="数量" min={0.01} rules={[{ required: true, message: "请输入数量" }]} />
+          </Col>
+          <Col xs={24} md={4}>
+            <ProFormDigit name="unitPrice" label="单价" min={0} fieldProps={{ precision: 2 }} />
+          </Col>
+        </Row>
       </ProFormList>
     </ModalForm>
   );
 }
 
+interface CascaderOption {
+  label: string;
+  value: string;
+  isLeaf?: boolean;
+  loading?: boolean;
+  children?: CascaderOption[];
+}
+
 /**
- * SKU selector connected to the product catalog.
- * When selected, notifies parent with SKU details for auto-fill.
+ * 商品级联选择器（产品 -> SKU），类似省/市/区选择：选第一层展开第二层。
+ * 第二层 SKU 懒加载并带缓存（由父级持有，所有明细行共享）。
+ * 选中叶子 SKU 后回写 skuId 到表单，并回调填充品名/单位/单价。
  */
-function SkuSelectField({
-  allSkus, productsLoading, onSkuSelected
+function SkuCascaderField({
+  options, loading, skuChildrenCache, onSkuChildrenLoaded, onSkuSelected
 }: {
-  allSkus: Array<{
-    skuId: string; skuCode: string; productName: string;
-    unit: string; unitPrice?: number; label: string
-  }>;
-  productsLoading: boolean;
+  options: CascaderOption[];
+  loading: boolean;
+  skuChildrenCache: Record<string, CascaderOption[]>;
+  onSkuChildrenLoaded: (productId: string, children: CascaderOption[]) => void;
   onSkuSelected: (skuInfo: {
     skuId: string; skuCode: string; productName: string; unit: string; unitPrice?: number
   }) => void;
 }) {
+  // 缓存详情拉取的 SKU 原始数据，便于选中时回填（productId -> sku 详情数组）
+  const [skuDetailCache, setSkuDetailCache] = useState<Record<string, Array<{
+    skuId: string; skuCode: string; productName: string; unit: string; unitPrice?: number; label: string
+  }>>>({});
+
+  async function loadChildren(selectedOptions: CascaderOption[]) {
+    const target = selectedOptions[selectedOptions.length - 1];
+    if (!target) return;
+    const productId = target.value;
+    if (skuChildrenCache[productId]) return; // 已缓存
+    try {
+      const detail = await fetchProductDetail(productId);
+      const list = (detail.skus ?? [])
+        .filter((sku) => sku.status !== 0) // 过滤掉禁用的 SKU
+        .map((sku) => ({
+          skuId: sku.id ?? "",
+          skuCode: sku.skuCode,
+          productName: detail.name,
+          unit: detail.unit,
+          unitPrice: sku.price ?? undefined,
+          label: `${sku.skuCode}${sku.attributes ? ` (${sku.attributes})` : ""}`
+        }));
+      setSkuDetailCache((prev) => ({ ...prev, [productId]: list }));
+      const children: CascaderOption[] = list.map((s) => ({ label: s.label, value: s.skuId, isLeaf: true }));
+      onSkuChildrenLoaded(productId, children);
+    } finally {
+      // no-op
+    }
+  }
+
+  // 合并已缓存的 SKU 子节点到产品选项，供 Cascader 展示第二层
+  const mergedOptions = options.map((opt) => {
+    const children = skuChildrenCache[opt.value];
+    return children ? { ...opt, children } : opt;
+  });
+
+  function handleChange(value: (string | number)[]) {
+    if (!value || value.length < 2) return;
+    const [productId, skuId] = value as [string, string];
+    const found = skuDetailCache[productId]?.find((s) => s.skuId === skuId);
+    if (found) {
+      onSkuSelected({
+        skuId: found.skuId,
+        skuCode: found.skuCode,
+        productName: found.productName,
+        unit: found.unit,
+        unitPrice: found.unitPrice
+      });
+    }
+  }
+
   return (
-    <ProFormSelect
-      name="skuId"
-      label="选择商品SKU"
+    <ProFormCascader
+      name="productSkuPath"
+      label="商品"
       rules={[{ required: true, message: "请选择商品" }]}
-      colProps={{ xs: 24, md: 5 }}
-      options={allSkus.map((s) => ({ label: s.label, value: s.skuId }))}
       fieldProps={{
-        placeholder: "搜索产品名称或SKU编码",
-        showSearch: true,
-        loading: productsLoading,
-        filterOption: (input: string, option: any) =>
-          (option?.label as string)?.toLowerCase().includes(input.toLowerCase()) ?? false,
-        onChange: (value: string) => {
-          const found = allSkus.find((s) => s.skuId === value);
-          if (found) {
-            onSkuSelected({
-              skuId: found.skuId,
-              skuCode: found.skuCode,
-              productName: found.productName,
-              unit: found.unit,
-              unitPrice: found.unitPrice
-            });
-          }
-        }
+        options: mergedOptions,
+        placeholder: "选择产品 / SKU",
+        loading,
+        loadData: loadChildren,
+        onChange: handleChange
       }}
     />
   );

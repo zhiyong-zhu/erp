@@ -10,7 +10,9 @@ import type {
   OperationLogRecord,
   PermissionRecord,
   RolePayload,
-  RoleRecord
+  RoleRecord,
+  SysParamRecord,
+  SysParamUpdatePayload
 } from "../types/system";
 
 interface ApiResponse<T> {
@@ -104,5 +106,16 @@ export async function updateDictData(id: string, payload: DictDataPayload): Prom
 
 export async function fetchOperationLogs(query: PageQuery & { module?: string; action?: string; username?: string }): Promise<PageResult<OperationLogRecord>> {
   const response = await http.get<ApiResponse<PageResult<OperationLogRecord>>>("/system/logs/operations", { params: query });
+  return response.data.data;
+}
+
+// ========== 系统参数 ==========
+export async function fetchSystemParams(query: PageQuery = { pageNum: 1, pageSize: 100 }): Promise<PageResult<SysParamRecord>> {
+  const response = await http.get<ApiResponse<PageResult<SysParamRecord>>>("/system/params", { params: query });
+  return response.data.data;
+}
+
+export async function updateSystemParam(id: string, payload: SysParamUpdatePayload): Promise<SysParamRecord> {
+  const response = await http.put<ApiResponse<SysParamRecord>>(`/system/params/${id}`, payload);
   return response.data.data;
 }

@@ -67,6 +67,9 @@ export function AppLayout() {
           hasPermission(SYSTEM_PERMISSIONS.DICT_LIST)
             ? { key: "/system/dict", icon: <ProfileOutlined />, label: "数据字典", onClick: () => navigate("/system/dict") }
             : null,
+          hasPermission(SYSTEM_PERMISSIONS.PARAM_LIST)
+            ? { key: "/system/params", icon: <SettingOutlined />, label: "系统参数", onClick: () => navigate("/system/params") }
+            : null,
           hasPermission(SYSTEM_PERMISSIONS.LOG_LIST)
             ? { key: "/system/logs", icon: <FileSearchOutlined />, label: "操作日志", onClick: () => navigate("/system/logs") }
             : null
@@ -219,6 +222,8 @@ export function AppLayout() {
     selectedKeys = ["/system/roles"];
   } else if (location.pathname.startsWith("/system/dict")) {
     selectedKeys = ["/system/dict"];
+  } else if (location.pathname.startsWith("/system/params")) {
+    selectedKeys = ["/system/params"];
   } else if (location.pathname.startsWith("/system/logs")) {
     selectedKeys = ["/system/logs"];
   } else if (location.pathname.startsWith("/product/categories")) {

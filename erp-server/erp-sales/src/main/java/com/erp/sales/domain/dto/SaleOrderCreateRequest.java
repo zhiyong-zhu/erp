@@ -45,6 +45,8 @@ public class SaleOrderCreateRequest extends BaseDTO {
     public void setItems(List<Item> items) { this.items = items; }
 
     public static class Item {
+        /** 编辑时回传已有明细的主键；新建或新增行时为空，用于 diff 判断是否保留明细行 */
+        private UUID id;
         private UUID skuId;
         private String skuCode;
         private String productName;
@@ -54,6 +56,8 @@ public class SaleOrderCreateRequest extends BaseDTO {
         private BigDecimal amount;
         private String remark;
 
+        public UUID getId() { return id; }
+        public void setId(UUID id) { this.id = id; }
         public UUID getSkuId() { return skuId; }
         public void setSkuId(UUID skuId) { this.skuId = skuId; }
         public String getSkuCode() { return skuCode; }

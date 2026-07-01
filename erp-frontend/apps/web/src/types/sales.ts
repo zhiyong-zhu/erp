@@ -11,7 +11,8 @@ export interface CustomerRecord extends BaseRecord {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
-  creditLimit?: number | null;
+  /** 客户等级：A=核心客户 B=潜力客户 C=普通客户 */
+  grade?: string | null;
   paymentTerms?: number | null;
   salesRepId?: string | null;
   taxNumber?: string | null;
@@ -28,7 +29,8 @@ export interface CustomerPayload extends BasePayload {
   phone?: string;
   email?: string;
   address?: string;
-  creditLimit?: number;
+  /** 客户等级：A=核心客户 B=潜力客户 C=普通客户 */
+  grade?: string;
   paymentTerms?: number;
   salesRepId?: string;
   taxNumber?: string;
@@ -72,6 +74,8 @@ export interface SaleOrderRecord extends BaseRecord {
   paidAt?: string | null;
   shippedAt?: string | null;
   completedAt?: string | null;
+  /** 是否存在未处理（OPEN）销售异常，用于确认门禁 */
+  hasOpenException?: boolean;
   items: SaleOrderItemRecord[];
   shippingOrders?: ShippingRecord[];
 }
@@ -86,6 +90,8 @@ export interface SaleOrderCreatePayload extends BasePayload {
 }
 
 export interface SaleOrderItemPayload {
+  /** 编辑时回传已有明细主键，用于服务端 diff 判断是否保留明细行 */
+  id?: string;
   skuId: string;
   skuCode?: string;
   productName?: string;

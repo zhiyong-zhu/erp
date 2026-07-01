@@ -38,7 +38,9 @@ import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
 import com.erp.sales.mapper.ShippingOrderItemMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
+import com.erp.sales.mapper.SaleExceptionMapper;
 import com.erp.sales.service.SaleExceptionService;
+import com.erp.system.service.SysParamService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +64,8 @@ class SaleOrderServiceImplTest {
     @Mock private ProductionProductStockMapper productStockMapper;
     @Mock private InventoryTransactionMapper inventoryTransactionMapper;
     @Mock private SaleExceptionService saleExceptionService;
+    @Mock private SaleExceptionMapper saleExceptionMapper;
+    @Mock private SysParamService sysParamService;
     @Mock private ProductionSerialNumberService serialNumberService;
 
     private SaleOrderServiceImpl service;
@@ -79,6 +83,8 @@ class SaleOrderServiceImplTest {
                 productStockMapper,
                 inventoryTransactionMapper,
                 saleExceptionService,
+                saleExceptionMapper,
+                sysParamService,
                 serialNumberService
         );
     }
@@ -362,6 +368,8 @@ class SaleOrderServiceImplTest {
         when(shippingOrderMapper.selectBySaleOrderId(order.getId())).thenReturn(List.of());
         when(productSkuMapper.selectById(skuId)).thenReturn(sku);
         when(productStockMapper.selectOne(any(Wrapper.class))).thenReturn(stock);
+        // 开启库存校验开关，使确认流程预占库存
+        when(sysParamService.getBoolean(eq("sale_order.confirm_reserve_stock"), eq(true))).thenReturn(true);
 
         SaleOrderStatusRequest confirmRequest = new SaleOrderStatusRequest();
         confirmRequest.setAction(SaleOrderStatusMachine.ACTION_CONFIRM);
