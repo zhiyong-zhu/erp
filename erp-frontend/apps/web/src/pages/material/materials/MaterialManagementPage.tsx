@@ -4,6 +4,8 @@ import { MATERIAL_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { CreateForm } from "../../../components/CreateForm";
+import type { FieldOption } from "../../../components/CreateForm";
+import { useDictOptions } from "../../../hooks/useDictOptions";
 import {
   createMaterial,
   exportMaterialsFile,
@@ -55,6 +57,7 @@ export function MaterialManagementPage() {
       })),
     [categories]
   );
+  const { options: unitOptions } = useDictOptions("product_unit");
 
   const supplierOptions = useMemo(
     () =>
@@ -212,6 +215,7 @@ export function MaterialManagementPage() {
         title="新建原料"
         open={createOpen}
         categoryOptions={categoryOptions}
+        unitOptions={unitOptions}
         supplierOptions={supplierOptions}
         onCancel={() => setCreateOpen(false)}
         onFinish={handleCreate}
@@ -220,6 +224,7 @@ export function MaterialManagementPage() {
         title="编辑原料"
         open={!!editingMaterial}
         categoryOptions={categoryOptions}
+        unitOptions={unitOptions}
         supplierOptions={supplierOptions}
         initialValues={
           editingMaterial
@@ -249,6 +254,7 @@ function MaterialForm({
   open,
   initialValues,
   categoryOptions,
+  unitOptions,
   supplierOptions,
   onCancel,
   onFinish
@@ -257,6 +263,7 @@ function MaterialForm({
   open: boolean;
   initialValues?: Partial<MaterialPayload>;
   categoryOptions: Array<{ label: string; value: string }>;
+  unitOptions: FieldOption[];
   supplierOptions: Array<{ label: string; value: string }>;
   onCancel: () => void;
   onFinish: (values: MaterialPayload) => Promise<boolean>;
@@ -276,7 +283,7 @@ function MaterialForm({
             { type: "text", name: "code", label: "原料编码", rules: [{ required: true, message: "请输入原料编码" }], colSpan: 8 },
             { type: "text", name: "name", label: "原料名称", rules: [{ required: true, message: "请输入原料名称" }], colSpan: 8 },
             { type: "select", name: "categoryId", label: "原料分类", options: categoryOptions, colSpan: 8 },
-            { type: "text", name: "unit", label: "单位", rules: [{ required: true, message: "请输入单位" }], colSpan: 8 },
+            { type: "select", name: "unit", label: "单位", options: unitOptions, rules: [{ required: true, message: "请选择单位" }], colSpan: 8 },
             { type: "select", name: "defaultSupplierId", label: "默认供应商", options: supplierOptions, colSpan: 8, fieldProps: { allowClear: true } },
             {
               type: "select",

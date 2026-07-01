@@ -5,6 +5,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct } from "../../../api/product";
 import { CreateForm } from "../../../components/CreateForm";
+import type { FieldOption } from "../../../components/CreateForm";
 import { ImageUploadField } from "../../../components/form/ImageUploadField";
 import { SpecificationEditor } from "../../../components/form/SpecificationEditor";
 import { SkuListField } from "../../../components/form/SkuListField";
@@ -21,6 +22,7 @@ import { ProductPackageTab } from "./ProductPackageTab";
 import { ProductLabelTemplateTab } from "./ProductLabelTemplateTab";
 import { ProductLabelPrintTab } from "./ProductLabelPrintTab";
 import { hasPermission } from "../../../store/auth";
+import { useDictOptions } from "../../../hooks/useDictOptions";
 import type { ProductCategoryRecord, ProductPayload, ProductRecord, ProductSkuRecord, ProductUpdatePayload } from "../../../types/product";
 
 const { Title, Text } = Typography;
@@ -68,6 +70,7 @@ export function ProductManagementPage() {
     () => flattenCategories(categories).map((category) => ({ label: category.name, value: category.id })),
     [categories]
   );
+  const { options: unitOptions } = useDictOptions("product_unit");
 
   useEffect(() => {
     void loadCategories();
@@ -318,6 +321,7 @@ export function ProductManagementPage() {
         title="新建产品"
         open={createOpen}
         categoryOptions={categoryOptions}
+        unitOptions={unitOptions}
         canViewCost={canViewCost}
         onCancel={() => setCreateOpen(false)}
         onFinish={handleCreate}
@@ -326,6 +330,7 @@ export function ProductManagementPage() {
         title="编辑产品"
         open={!!editingProduct}
         categoryOptions={categoryOptions}
+        unitOptions={unitOptions}
         canViewCost={canViewCost}
         initialValues={editingProduct ? {
           code: editingProduct.code,
@@ -476,10 +481,11 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
   );
 }
 
-function ProductForm({ title, open, categoryOptions, canViewCost, initialValues, onCancel, onFinish, editing = false }: {
+function ProductForm({ title, open, categoryOptions, unitOptions, canViewCost, initialValues, onCancel, onFinish, editing = false }: {
   title: string;
   open: boolean;
   categoryOptions: Array<{ label: string; value: string }>;
+  unitOptions: FieldOption[];
   canViewCost: boolean;
   initialValues?: Partial<ProductPayload & ProductUpdatePayload>;
   onCancel: () => void;
@@ -560,7 +566,7 @@ function ProductForm({ title, open, categoryOptions, canViewCost, initialValues,
             { type: "text", name: "name", label: "产品名称", rules: [{ required: true }], colSpan: 12 },
             { type: "select", name: "categoryId", label: "产品分类", options: categoryOptions, colSpan: 12 },
             { type: "text", name: "brand", label: "品牌", colSpan: 12 },
-            { type: "text", name: "unit", label: "单位", rules: [{ required: true }], colSpan: 12 },
+            { type: "select", name: "unit", label: "单位", options: unitOptions, rules: [{ required: true }], colSpan: 12 },
             { type: "select", name: "status", label: "状态", options: productStatusOptions, colSpan: 12 },
             { type: "switch", name: "isSemifinished", label: "是否半成品", defaultChecked: false, colSpan: 12 },
             { type: "textarea", name: "description", label: "描述", colSpan: 24 }

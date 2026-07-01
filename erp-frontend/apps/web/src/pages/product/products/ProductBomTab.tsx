@@ -7,6 +7,8 @@ import { fetchMaterials } from "../../../api/material";
 import { fetchProducts } from "../../../api/product";
 import { createProductionBom, fetchProductionBoms, updateProductionBom } from "../../../api/production";
 import { CreateForm } from "../../../components/CreateForm";
+import type { FieldOption } from "../../../components/CreateForm";
+import { useDictOptions } from "../../../hooks/useDictOptions";
 import type { ProductionBomItemRecord, ProductionBomPayload, ProductionBomRecord } from "../../../types/production";
 
 const { Text } = Typography;
@@ -38,6 +40,7 @@ export function ProductBomTab({ productId, productName, canCreate, canUpdate, he
   const [editingRecord, setEditingRecord] = useState<ProductionBomRecord | null>(null);
   const [materialOptions, setMaterialOptions] = useState<MaterialOption[]>([]);
   const [semifinishedOptions, setSemifinishedOptions] = useState<MaterialOption[]>([]);
+  const { options: unitOptions } = useDictOptions("product_unit");
 
   useEffect(() => {
     void loadBoms();
@@ -180,6 +183,7 @@ export function ProductBomTab({ productId, productName, canCreate, canUpdate, he
         productName={productName}
         materialOptions={materialOptions}
         semifinishedOptions={semifinishedOptions}
+        unitOptions={unitOptions}
         onCancel={() => setCreateOpen(false)}
         onFinish={handleCreate}
       />
@@ -189,6 +193,7 @@ export function ProductBomTab({ productId, productName, canCreate, canUpdate, he
         productName={productName}
         materialOptions={materialOptions}
         semifinishedOptions={semifinishedOptions}
+        unitOptions={unitOptions}
         initialValues={editingRecord ? toBomInitialValues(editingRecord) : undefined}
         onCancel={() => setEditingRecord(null)}
         onFinish={handleUpdate}
@@ -203,6 +208,7 @@ function BomForm({
   productName,
   materialOptions,
   semifinishedOptions,
+  unitOptions,
   initialValues,
   onCancel,
   onFinish
@@ -212,6 +218,7 @@ function BomForm({
   productName?: string | null;
   materialOptions: MaterialOption[];
   semifinishedOptions: MaterialOption[];
+  unitOptions: FieldOption[];
   initialValues?: Partial<BomFormValues>;
   onCancel: () => void;
   onFinish: (values: BomFormValues) => Promise<boolean>;
@@ -267,7 +274,7 @@ function BomForm({
                   }
                 },
                 { type: "digit", name: "quantity", label: "数量", min: 0.0001, precision: 4, rules: [{ required: true }], colSpan: 3 },
-                { type: "text", name: "unit", label: "单位", colSpan: 3 },
+                { type: "select", name: "unit", label: "单位", options: unitOptions, colSpan: 3 },
                 { type: "digit", name: "lossRate", label: "损耗率%", min: 0, precision: 2, colSpan: 3 },
                 { type: "digit", name: "processStepNo", label: "工序号", min: 1, precision: 0, colSpan: 2 },
                 { type: "text", name: "remark", label: "备注", colSpan: 3 }
