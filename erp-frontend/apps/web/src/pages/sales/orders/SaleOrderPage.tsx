@@ -1,5 +1,5 @@
 import { CheckOutlined, EditOutlined, SendOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
-import { ModalForm, ProFormCascader, ProFormDigit, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
+import { ModalForm, ProFormCascader, ProFormDigit, ProFormField, ProFormList, ProFormSelect, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
 import { SALES_PERMISSIONS } from "@erp/shared";
 import { CreateForm } from "../../../components/CreateForm";
 import { App, Button, Col, Drawer, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   changeSaleOrderStatus,
   createSaleOrder,
+  fetchCustomerAddresses,
   fetchCustomers,
   fetchSaleOrderDetail,
   fetchSaleOrders,
@@ -15,8 +16,10 @@ import {
   updateSaleOrder
 } from "../../../api/sales";
 import { fetchProductDetail, fetchProducts } from "../../../api/product";
+import { AddressPicker } from "../../../components/form/AddressPicker";
 import { hasPermission } from "../../../store/auth";
 import type {
+  CustomerAddressRecord,
   SaleOrderCreatePayload,
   SaleOrderItemPayload,
   SaleOrderItemRecord,
@@ -601,6 +604,9 @@ function OrderFormModal({
   const [skuChildrenCache, setSkuChildrenCache] = useState<Record<string, CascaderOption[]>>({});
   // 编辑态：根据已选 skuId 反查 productSkuPath 后的初始值（异步，仅编辑时计算）
   const [resolvedInitialValues, setResolvedInitialValues] = useState<any>(undefined);
+  // 选中客户的收货地址列表（供 AddressPicker 展示历史地址 + 自动填默认）
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddressRecord[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
   const formRef = useRef<any>(null);
 
   // Load product list for the first-level selector. SKUs are loaded lazily
@@ -618,6 +624,26 @@ function OrderFormModal({
       setResolvedInitialValues(undefined);
     }
   }, [open]);
+
+  // 选客户时拉取其收货地址列表，自动填入默认地址
+  async function loadCustomerAddresses(customerId: string) {
+    setAddressesLoading(true);
+    try {
+      const list = await fetchCustomerAddresses(customerId);
+      setCustomerAddresses(list);
+      const defaultAddr = list.find((a) => a.isDefault);
+      const firstAddr = list[0];
+      // 仅在收货地址当前为空时自动填入，避免覆盖用户已输入/已回填的值
+      const current = formRef.current?.getFieldValue("shippingAddress");
+      if (!current && (defaultAddr?.address || firstAddr?.address)) {
+        formRef.current?.setFieldsValue({ shippingAddress: defaultAddr?.address ?? firstAddr?.address });
+      }
+    } catch {
+      setCustomerAddresses([]);
+    } finally {
+      setAddressesLoading(false);
+    }
+  }
 
   // 编辑态回填：产品列表就绪后，对已有明细行按产品名匹配并仅拉取涉及产品的 SKU，
   // 反查 [productId, skuId] 路径，让 Cascader 能正确展示已选项。
@@ -709,6 +735,12 @@ function OrderFormModal({
       <ProFormSelect
         name="customerId" label="客户" rules={[{ required: true, message: "请选择客户" }]}
         colProps={{ xs: 24, md: 8 }}
+        fieldProps={{
+          onChange: (value: string) => {
+            setCustomerAddresses([]);
+            if (value) void loadCustomerAddresses(value);
+          }
+        }}
         request={async () => {
           const data = await fetchCustomers({ pageNum: 1, pageSize: 200 });
           return data.records.map((c) => ({ label: `${c.name} (${c.code})`, value: c.id }));
@@ -726,7 +758,9 @@ function OrderFormModal({
           { label: "抖音", value: "DOUYIN" }
         ]}
       />
-      <ProFormText name="shippingAddress" label="收货地址" colProps={{ xs: 24, md: 8 }} />
+      <ProFormField name="shippingAddress" label="收货地址" colProps={{ xs: 24, md: 8 }}>
+        <AddressPicker options={customerAddresses} loading={addressesLoading} />
+      </ProFormField>
       <ProFormDigit name="discountAmount" label="优惠金额" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 4 }} />
       <ProFormDigit name="freightAmount" label="运费" min={0} fieldProps={{ precision: 2 }} colProps={{ xs: 24, md: 4 }} />
       <ProFormTextArea name="remark" label="备注" fieldProps={{ autoSize: { minRows: 2, maxRows: 4 } }} colProps={{ span: 24 }} />

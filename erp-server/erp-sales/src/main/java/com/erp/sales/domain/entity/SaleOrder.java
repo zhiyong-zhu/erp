@@ -27,7 +27,6 @@ public class SaleOrder extends BaseEntity {
     private BigDecimal payableAmount;
     private BigDecimal paidAmount;
     private String paymentStatus;
-    @TableField(typeHandler = JsonbStringTypeHandler.class)
     private String shippingAddress;
     private String remark;
     private OffsetDateTime orderedAt;

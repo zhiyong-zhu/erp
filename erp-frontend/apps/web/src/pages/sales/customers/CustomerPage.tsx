@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { SALES_PERMISSIONS } from "@erp/shared";
 import { CreateForm } from "../../../components/CreateForm";
-import { App, Button, Checkbox, Form, Input, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Card, Checkbox, Descriptions, Empty, Form, Input, Space, Table, Tabs, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import {
@@ -11,6 +11,7 @@ import {
 } from "../../../api/sales";
 import { hasPermission } from "../../../store/auth";
 import type { CustomerPayload, CustomerRecord } from "../../../types/sales";
+import { CustomerAddressTab } from "./CustomerAddressTab";
 
 const { Title, Text } = Typography;
 
@@ -39,6 +40,8 @@ export function CustomerPage() {
   const [keyword, setKeyword] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<CustomerRecord | null>(null);
+  const [detailTab, setDetailTab] = useState("base");
   const { message } = App.useApp();
   const canCreate = hasPermission(SALES_PERMISSIONS.CUSTOMER_CREATE);
   const canUpdate = hasPermission(SALES_PERMISSIONS.CUSTOMER_UPDATE);
@@ -111,17 +114,18 @@ export function CustomerPage() {
       render: (v: number) => { const s = STATUS_MAP[v]; return s ? <Tag color={s.color}>{s.label}</Tag> : "-"; }
     },
     {
-      title: "操作", key: "actions", width: 80,
+      title: "操作", key: "actions", width: 140,
       render: (_, record) => (
-        <Button type="link" disabled={!canUpdate} onClick={() => setEditingCustomer(record)}>
-          编辑
-        </Button>
+        <Space size="small">
+          <Button type="link" size="small" onClick={() => { setViewingCustomer(record); setDetailTab("base"); }}>详情</Button>
+          <Button type="link" size="small" disabled={!canUpdate} onClick={() => setEditingCustomer(record)}>编辑</Button>
+        </Space>
       )
     }
   ];
 
   return (
-    <section>
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="page-header">
         <div>
           <Title level={3} style={{ margin: 0 }}>销售管理 / 客户管理</Title>
@@ -142,18 +146,75 @@ export function CustomerPage() {
         </Space>
       </div>
 
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={customers}
-        loading={loading}
-        pagination={{
-          current: pageNum, pageSize, total,
-          showSizeChanger: true,
-          showTotal: (count) => `共 ${count} 条`,
-          onChange: (nextPageNum, nextPageSize) => void loadCustomers(nextPageNum, nextPageSize)
-        }}
-      />
+      <div className="product-page-split">
+        <div className="product-page-panel" style={{ flex: viewingCustomer ? "1 1 0" : "1 1 100%" }}>
+          <Card size="small" className="product-list-panel" styles={{ body: { padding: 0 } }}>
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={customers}
+              loading={loading}
+              size="small"
+              onRow={(record) => ({
+                onClick: () => { setViewingCustomer(record); setDetailTab("base"); },
+                style: { cursor: "pointer" }
+              })}
+              pagination={{
+                current: pageNum, pageSize, total,
+                showSizeChanger: true,
+                showTotal: (count) => `共 ${count} 条`,
+                onChange: (nextPageNum, nextPageSize) => void loadCustomers(nextPageNum, nextPageSize)
+              }}
+              scroll={{ y: 320 }}
+            />
+          </Card>
+        </div>
+
+        {viewingCustomer ? (
+          <div className="product-page-panel" style={{ flex: "1 1 0" }}>
+            <Card size="small" className="product-list-panel" styles={{ body: { padding: 12 } }}>
+              <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Text strong>{viewingCustomer.name}（{viewingCustomer.code}）</Text>
+                <Button type="link" size="small" onClick={() => setViewingCustomer(null)}>收起</Button>
+              </div>
+              <Tabs
+                activeKey={detailTab}
+                onChange={setDetailTab}
+                items={[
+                  {
+                    key: "base",
+                    label: "基础信息",
+                    children: (
+                      <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="客户编码">{viewingCustomer.code}</Descriptions.Item>
+                        <Descriptions.Item label="客户名称">{viewingCustomer.name}</Descriptions.Item>
+                        <Descriptions.Item label="简称">{viewingCustomer.shortName ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="类型">{CUSTOMER_TYPE_MAP[viewingCustomer.customerType ?? 0] ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="联系人">{viewingCustomer.contactPerson ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="电话">{viewingCustomer.phone ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="邮箱" span={2}>{viewingCustomer.email ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="客户等级">
+                          {(() => { const g = GRADE_MAP[viewingCustomer.grade ?? ""]; return g ? <Tag color={g.color}>{viewingCustomer.grade} · {g.label}</Tag> : "-"; })()}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="状态">
+                          {(() => { const s = STATUS_MAP[viewingCustomer.status]; return s ? <Tag color={s.color}>{s.label}</Tag> : "-"; })()}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="地址" span={2}>{viewingCustomer.address ?? "-"}</Descriptions.Item>
+                        <Descriptions.Item label="备注" span={2}>{viewingCustomer.remark ?? "-"}</Descriptions.Item>
+                      </Descriptions>
+                    )
+                  },
+                  {
+                    key: "address",
+                    label: "收货地址",
+                    children: <CustomerAddressTab customerId={viewingCustomer.id} canUpdate={canUpdate} />
+                  }
+                ]}
+              />
+            </Card>
+          </div>
+        ) : null}
+      </div>
 
       <CustomerForm
         title="新建客户"

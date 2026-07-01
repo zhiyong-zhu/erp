@@ -20,6 +20,27 @@ export interface CustomerRecord extends BaseRecord {
   remark?: string | null;
 }
 
+// ========== 客户地址 ==========
+export interface CustomerAddressRecord {
+  id: string;
+  customerId: string;
+  recipient?: string | null;
+  phone?: string | null;
+  address: string;
+  isDefault?: boolean;
+  remark?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerAddressPayload {
+  recipient?: string;
+  phone?: string;
+  address: string;
+  isDefault?: boolean;
+  remark?: string;
+}
+
 export interface CustomerPayload extends BasePayload {
   code?: string;
   name: string;

@@ -1,6 +1,8 @@
 import { http } from "./http";
 import type { PageQuery, PageResult } from "../types/page";
 import type {
+  CustomerAddressPayload,
+  CustomerAddressRecord,
   CustomerPayload,
   CustomerRecord,
   EcommerceShopPayload,
@@ -42,6 +44,30 @@ export async function createCustomer(payload: CustomerPayload): Promise<Customer
 export async function updateCustomer(id: string, payload: CustomerPayload): Promise<CustomerRecord> {
   const response = await http.put<ApiResponse<CustomerRecord>>(`/sales/customers/${id}`, payload);
   return response.data.data;
+}
+
+// ========== 客户地址 ==========
+export async function fetchCustomerAddresses(customerId: string): Promise<CustomerAddressRecord[]> {
+  const response = await http.get<ApiResponse<CustomerAddressRecord[]>>(`/sales/customers/${customerId}/addresses`);
+  return response.data.data;
+}
+
+export async function createCustomerAddress(customerId: string, payload: CustomerAddressPayload): Promise<CustomerAddressRecord> {
+  const response = await http.post<ApiResponse<CustomerAddressRecord>>(`/sales/customers/${customerId}/addresses`, payload);
+  return response.data.data;
+}
+
+export async function updateCustomerAddress(customerId: string, id: string, payload: CustomerAddressPayload): Promise<CustomerAddressRecord> {
+  const response = await http.put<ApiResponse<CustomerAddressRecord>>(`/sales/customers/${customerId}/addresses/${id}`, payload);
+  return response.data.data;
+}
+
+export async function deleteCustomerAddress(customerId: string, id: string): Promise<void> {
+  await http.delete(`/sales/customers/${customerId}/addresses/${id}`);
+}
+
+export async function setDefaultCustomerAddress(customerId: string, id: string): Promise<void> {
+  await http.post(`/sales/customers/${customerId}/addresses/${id}/default`);
 }
 
 // ========== 销售订单 ==========
