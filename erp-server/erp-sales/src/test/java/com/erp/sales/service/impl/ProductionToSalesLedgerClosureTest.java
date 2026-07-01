@@ -37,12 +37,14 @@ import com.erp.sales.domain.entity.SaleOrderItem;
 import com.erp.sales.domain.entity.ShippingOrder;
 import com.erp.sales.domain.entity.ShippingOrderItem;
 import com.erp.sales.mapper.CustomerMapper;
+import com.erp.sales.mapper.SaleExceptionMapper;
 import com.erp.sales.mapper.SaleOrderItemMapper;
 import com.erp.sales.mapper.SaleOrderMapper;
 import com.erp.sales.mapper.SaleReturnMapper;
 import com.erp.sales.mapper.ShippingOrderItemMapper;
 import com.erp.sales.mapper.ShippingOrderMapper;
 import com.erp.sales.service.SaleExceptionService;
+import com.erp.system.service.SysParamService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +79,8 @@ class ProductionToSalesLedgerClosureTest {
     @Mock private CustomerMapper customerMapper;
     @Mock private ProductSkuMapper productSkuMapper;
     @Mock private SaleExceptionService saleExceptionService;
+    @Mock private SaleExceptionMapper saleExceptionMapper;
+    @Mock private SysParamService sysParamService;
 
     private ProductionServiceImpl productionService;
     private SaleOrderServiceImpl saleOrderService;
@@ -110,6 +114,8 @@ class ProductionToSalesLedgerClosureTest {
                 productStockMapper,
                 inventoryTransactionMapper,
                 saleExceptionService,
+                saleExceptionMapper,
+                sysParamService,
                 serialNumberService
         );
     }
