@@ -53,8 +53,8 @@ erp:
     refresh-token-expire-seconds: 604800
   storage:
     endpoint: http://localhost:9000
-    access-key: admin
-    secret-key: admin123456
+    access-key: rustfsadmin
+    secret-key: rustfsadmin
     bucket: erp-dev
 
 

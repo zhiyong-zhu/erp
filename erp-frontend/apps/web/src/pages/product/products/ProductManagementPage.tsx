@@ -3,7 +3,7 @@ import { App, Button, Card, Descriptions, Empty, Input, Space, Switch, Table, Ta
 import { PRODUCT_PERMISSIONS, PRODUCTION_PERMISSIONS } from "@erp/shared";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct } from "../../../api/product";
+import { buildImageUrl, changeProductStatusFlow, createProduct, exportProductsFile, fetchProductCategoryTree, fetchProductDetail, fetchProducts, importProductsFile, updateProduct } from "../../../api/product";
 import { CreateForm } from "../../../components/CreateForm";
 import type { FieldOption } from "../../../components/CreateForm";
 import { ImageUploadField } from "../../../components/form/ImageUploadField";
@@ -420,6 +420,17 @@ function ProductDetailPanel({ product, activeTab, canViewCost, canViewPackages, 
                     <Tag color={product.status === 1 ? "success" : product.status === 2 ? "default" : "processing"}>
                       {product.status === 1 ? "在售" : product.status === 2 ? "停用" : "草稿"}
                     </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="图片" span={2}>
+                    {product.images && product.images.length > 0 ? (
+                      <Space wrap size={[8, 8]}>
+                        {product.images.map((key) => (
+                          <a key={key} href={buildImageUrl(key)} target="_blank" rel="noreferrer">
+                            <img src={buildImageUrl(key)} alt="产品图片" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 4, border: "1px solid #f0f0f0" }} />
+                          </a>
+                        ))}
+                      </Space>
+                    ) : "-"}
                   </Descriptions.Item>
                   <Descriptions.Item label="描述" span={2}>{product.description || "-"}</Descriptions.Item>
                   <Descriptions.Item label="规格定义" span={2}>

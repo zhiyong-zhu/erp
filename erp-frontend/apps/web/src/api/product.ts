@@ -1,4 +1,4 @@
-import { http } from "./http";
+import { http, getAccessToken } from "./http";
 import type { PageQuery, PageResult } from "../types/page";
 import type {
   LabelPrintPayload,
@@ -18,6 +18,30 @@ interface ApiResponse<T> {
   message: string;
   data: T;
   timestamp: number;
+}
+
+const API_BASE = import.meta.env.PROD ? "/api/v1" : "http://localhost:8080/api/v1";
+
+function encodePathSegments(key: string): string {
+  return key.split("/").map(encodeURIComponent).join("/");
+}
+
+export function buildImageUrl(key: string): string {
+  const token = getAccessToken() ?? "";
+  if (key.startsWith("http://") || key.startsWith("https://")) {
+    try {
+      const url = new URL(key);
+      const idx = url.pathname.indexOf("/product/images/");
+      if (idx >= 0) {
+        const storageKey = url.pathname.substring(idx + 1);
+        return `${API_BASE}/product/products/images/${encodePathSegments(storageKey)}?token=${token}`;
+      }
+    } catch {
+      // fall through
+    }
+    return key;
+  }
+  return `${API_BASE}/product/products/images/${encodePathSegments(key)}?token=${token}`;
 }
 
 export async function fetchProductCategoryTree(): Promise<ProductCategoryRecord[]> {

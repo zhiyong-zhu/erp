@@ -8,6 +8,7 @@ import com.erp.product.domain.dto.ProductUpdateRequest;
 import com.erp.product.domain.vo.FileUploadVO;
 import com.erp.product.domain.vo.ProductVO;
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +20,8 @@ public interface ProductService {
     void updateStatus(UUID id, ProductStatusUpdateRequest request);
     ProductVO changeStatusFlow(UUID id, ProductStatusFlowRequest request);
     FileUploadVO uploadImage(MultipartFile file);
+    String getImageContentType(String key);
+    InputStream getImage(String key);
     ByteArrayInputStream exportProducts();
     void importProducts(MultipartFile file);
 }

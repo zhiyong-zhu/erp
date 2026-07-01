@@ -2,6 +2,7 @@ package com.erp.product.controller;
 
 import com.erp.common.core.domain.R;
 import com.erp.common.core.domain.PageVO;
+import com.erp.common.security.service.TokenService;
 import com.erp.product.domain.dto.ProductCreateRequest;
 import com.erp.product.domain.dto.ProductStatusFlowRequest;
 import com.erp.product.domain.dto.ProductStatusUpdateRequest;
@@ -11,6 +12,8 @@ import com.erp.product.domain.vo.ProductVO;
 import com.erp.product.permission.ProductPermissionCodes;
 import com.erp.product.service.ProductService;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.core.io.InputStreamResource;
@@ -33,9 +36,11 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/product/products")
 public class ProductController {
     private final ProductService productService;
+    private final TokenService tokenService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, TokenService tokenService) {
         this.productService = productService;
+        this.tokenService = tokenService;
     }
 
     @GetMapping
@@ -84,6 +89,30 @@ public class ProductController {
     @PreAuthorize("hasAuthority(T(com.erp.product.permission.ProductPermissionCodes).PRODUCT_CREATE)")
     public R<FileUploadVO> uploadImage(@RequestPart("file") MultipartFile file) {
         return R.ok(productService.uploadImage(file));
+    }
+
+    @GetMapping("/images/**")
+    public ResponseEntity<?> getImage(jakarta.servlet.http.HttpServletRequest request,
+                                      @RequestParam(required = false) String token) {
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.status(401).body("missing token");
+        }
+        try {
+            tokenService.parseToken(token);
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("invalid token");
+        }
+        String prefix = "/api/v1/product/products/images/";
+        String key = request.getRequestURI();
+        int idx = key.indexOf(prefix);
+        if (idx >= 0) {
+            key = URLDecoder.decode(key.substring(idx + prefix.length()), StandardCharsets.UTF_8);
+        }
+        String contentType = productService.getImageContentType(key);
+        InputStreamResource resource = new InputStreamResource(productService.getImage(key));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
     }
 
     @GetMapping("/export")

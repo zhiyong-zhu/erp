@@ -33,6 +33,7 @@ public class SecurityAutoConfig {
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/ping",
+                                "/api/v1/product/products/images/**",
                                 "/actuator/health",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**")

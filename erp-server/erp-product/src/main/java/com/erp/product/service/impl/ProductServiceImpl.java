@@ -24,6 +24,7 @@ import com.erp.product.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import com.erp.common.storage.config.StorageProperties;
 
@@ -191,12 +193,30 @@ public class ProductServiceImpl implements ProductService {
             );
             FileUploadVO vo = new FileUploadVO();
             vo.setFilename(filename);
-            vo.setUrl(storageProperties.getEndpoint() + "/" + storageProperties.getBucket() + "/" + key);
+            vo.setUrl(key);
             return vo;
         } catch (Exception ex) {
             log.error("图片上传失败", ex);
             throw new BizException(10006, "图片上传失败: " + ex.getMessage());
         }
+    }
+
+    @Override
+    public String getImageContentType(String key) {
+        String lower = key.toLowerCase();
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        return "image/jpeg";
+    }
+
+    @Override
+    public InputStream getImage(String key) {
+        return s3Client.getObject(GetObjectRequest.builder()
+                .bucket(storageProperties.getBucket())
+                .key(key)
+                .build());
     }
 
     @Override
