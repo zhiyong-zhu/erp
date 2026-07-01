@@ -45,3 +45,7 @@ temp/
 # Local repositories / caches
 erp-server/.m2repo/
 erp-server/.maven-home/
+
+# JRebel
+**/rebel.xml
+**/rebel-remote.xml
