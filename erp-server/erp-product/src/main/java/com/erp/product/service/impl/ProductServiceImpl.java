@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,6 +44,7 @@ import com.erp.common.storage.config.StorageProperties;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
     private final ProductMapper productMapper;
     private final ProductSkuMapper productSkuMapper;
     private final ProductCategoryMapper productCategoryMapper;
@@ -191,7 +194,8 @@ public class ProductServiceImpl implements ProductService {
             vo.setUrl(storageProperties.getEndpoint() + "/" + storageProperties.getBucket() + "/" + key);
             return vo;
         } catch (Exception ex) {
-            throw new BizException(10006, "图片上传失败");
+            log.error("图片上传失败", ex);
+            throw new BizException(10006, "图片上传失败: " + ex.getMessage());
         }
     }
 
